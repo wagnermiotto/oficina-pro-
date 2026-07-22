@@ -46,6 +46,14 @@ describe("tenantDb — isolamento entre oficinas", () => {
     expect(clientes[0]!.nome).toBe("Cliente da Oficina A");
   });
 
+  it("findUnique com select sem oficinaId encontra registro do próprio tenant", async () => {
+    const proprio = await tenantDb(oficinaA).cliente.findUnique({
+      where: { id: clienteAId },
+      select: { id: true, nome: true },
+    });
+    expect(proprio?.nome).toBe("Cliente da Oficina A");
+  });
+
   it("findUnique de registro alheio devolve null", async () => {
     const alheio = await tenantDb(oficinaA).cliente.findUnique({
       where: { id: clienteBId },

@@ -153,14 +153,22 @@ function criarTenantDb(oficinaId: string) {
             }
             case "findUnique":
             case "findUniqueOrThrow": {
-              const resultado = (await query(args)) as
-                | (Record<string, unknown> & { oficinaId?: string })
-                | null;
-              if (resultado && resultado.oficinaId !== oficinaId) {
-                if (operation === "findUniqueOrThrow") {
-                  throw new TenantViolationError(model, operation);
-                }
-                return null;
+              // Reescreve como findFirst escopado: um pós-check no resultado
+              // falharia quando o caller usa `select` sem oficinaId.
+              const delegate = (
+                prisma as unknown as Record<
+                  string,
+                  { findFirst(q: unknown): Promise<unknown> }
+                >
+              )[model.charAt(0).toLowerCase() + model.slice(1)];
+              const resultado = await delegate.findFirst({
+                ...(a.select ? { select: a.select } : {}),
+                ...(a.include ? { include: a.include } : {}),
+                ...(a.omit ? { omit: a.omit } : {}),
+                where: { AND: [escopo, (a.where as WhereInput) ?? {}] },
+              });
+              if (!resultado && operation === "findUniqueOrThrow") {
+                throw new TenantViolationError(model, operation);
               }
               return resultado;
             }
