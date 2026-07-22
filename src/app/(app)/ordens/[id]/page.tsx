@@ -11,7 +11,9 @@ import {
   User,
 } from "lucide-react";
 import { requireOficina } from "@/shared/lib/session";
+import { iaDisponivel } from "@/shared/lib/ai";
 import { obterOS, listarMecanicos } from "@/modules/ordens/services/os-service";
+import { OSIACard } from "@/modules/ordens/components/os-ia-card";
 import { OSStatusAcoes } from "@/modules/ordens/components/os-status-acoes";
 import { OSItensCards } from "@/modules/ordens/components/os-itens-cards";
 import { OSAjustesCard } from "@/modules/ordens/components/os-ajustes-card";
@@ -206,6 +208,8 @@ export default async function OSDetalhePage({
             totalPecas={paraNumero(os.totalPecas)}
             total={paraNumero(os.total)}
           />
+
+          {iaDisponivel() && editavel ? <OSIACard osId={os.id} /> : null}
 
           {os.checkIn ? (
             <Card className="py-4">

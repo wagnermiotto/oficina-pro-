@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download } from "lucide-react";
+import { Boxes, Download, Users, Wallet, Wrench } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,11 +14,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+const ICONES: Record<string, LucideIcon> = {
+  lancamentos: Wallet,
+  ordens: Wrench,
+  estoque: Boxes,
+  clientes: Users,
+};
+
 interface RelatorioCardProps {
   titulo: string;
   descricao: string;
   tipo: string;
-  icone: LucideIcon;
   comPeriodo?: boolean;
 }
 
@@ -26,9 +32,9 @@ export function RelatorioCard({
   titulo,
   descricao,
   tipo,
-  icone: Icone,
   comPeriodo = true,
 }: RelatorioCardProps) {
+  const Icone = ICONES[tipo] ?? Download;
   const [de, setDe] = useState("");
   const [ate, setAte] = useState("");
 
