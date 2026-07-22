@@ -1,5 +1,5 @@
 import { requireOficina } from "@/shared/lib/session";
-import { prisma } from "@/shared/lib/prisma";
+import { obterNomeOficina } from "@/shared/lib/oficina-cache";
 import {
   SidebarInset,
   SidebarProvider,
@@ -13,15 +13,12 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const ctx = await requireOficina();
-  const oficina = await prisma.organization.findUnique({
-    where: { id: ctx.oficinaId },
-    select: { name: true },
-  });
+  const nomeOficina = await obterNomeOficina(ctx.oficinaId);
 
   return (
     <SidebarProvider>
       <AppSidebar
-        nomeOficina={oficina?.name ?? "Minha oficina"}
+        nomeOficina={nomeOficina}
         usuario={{ nome: ctx.usuario.nome, email: ctx.usuario.email }}
       />
       <SidebarInset>

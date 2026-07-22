@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireOficina, requireCargo } from "@/shared/lib/session";
 import { registrarAuditoria } from "@/shared/lib/audit";
 import { prisma } from "@/shared/lib/prisma";
+import { invalidarNomeOficina } from "@/shared/lib/oficina-cache";
 import { textoOpcional } from "@/shared/utils/zod";
 import { validarCNPJ } from "@/shared/utils/documento";
 
@@ -81,6 +82,7 @@ export async function salvarConfigAction(
     where: { id: ctx.oficinaId },
     data: { name: nomeOficina },
   });
+  invalidarNomeOficina(ctx.oficinaId);
   await ctx.db.oficinaConfig.upsert({
     where: { oficinaId: ctx.oficinaId },
     create: { oficinaId: ctx.oficinaId, ...config },
