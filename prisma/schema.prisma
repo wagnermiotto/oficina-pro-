@@ -989,10 +989,23 @@ model Interacao {
 // EQUIPE
 // =============================================================================
 
+/// Papel de domínio do usuário dentro da oficina (RBAC da aplicação).
+/// O Member.role do Better Auth (owner/admin/member) cuida só da mecânica
+/// de organização; permissões de negócio usam este cargo.
+enum Cargo {
+  ADMIN
+  GERENTE
+  RECEPCIONISTA
+  MECANICO
+  FINANCEIRO
+  ESTOQUISTA
+}
+
 model FuncionarioPerfil {
   id              String    @id @default(uuid()) @db.Uuid
   oficinaId       String
   userId          String
+  cargo           Cargo     @default(MECANICO)
   especialidade   String?
   comissaoPercent Decimal   @default(0) @db.Decimal(5, 2)
   salario         Decimal?  @db.Decimal(12, 2)

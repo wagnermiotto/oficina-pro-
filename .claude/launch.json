@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "oficina-saas",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "C:\\Users\\User\\Documents\\Empresas\\oficina-saas",
+      "port": 3000
+    }
+  ]
+}

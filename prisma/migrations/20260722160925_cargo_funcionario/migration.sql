@@ -1,0 +1,5 @@
+-- CreateEnum
+CREATE TYPE "Cargo" AS ENUM ('ADMIN', 'GERENTE', 'RECEPCIONISTA', 'MECANICO', 'FINANCEIRO', 'ESTOQUISTA');
+
+-- AlterTable
+ALTER TABLE "funcionario_perfil" ADD COLUMN     "cargo" "Cargo" NOT NULL DEFAULT 'MECANICO';
