@@ -22,6 +22,14 @@ export const auth = betterAuth({
       maxAge: 60 * 5,
     },
   },
+  advanced: {
+    // Em produção o app roda atrás do proxy da Hostinger, então o IP do
+    // socket é sempre o do proxy (::1). Estes headers trazem o IP real do
+    // cliente — necessário para o rate limiting funcionar por usuário.
+    ipAddress: {
+      ipAddressHeaders: ["x-forwarded-for", "x-real-ip"],
+    },
+  },
   databaseHooks: {
     session: {
       create: {
