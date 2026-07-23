@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "Aprovação de orçamento · OficinaPro" };
+export const metadata: Metadata = { title: "Aprovação de orçamento" };
 
 function TelaAviso({
   icone,
