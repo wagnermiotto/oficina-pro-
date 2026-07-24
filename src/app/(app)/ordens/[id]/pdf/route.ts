@@ -5,6 +5,8 @@ import { tenantDb } from "@/shared/lib/tenant-db";
 import { prisma } from "@/shared/lib/prisma";
 import { obterOS } from "@/modules/ordens/services/os-service";
 import { OSPdf } from "@/modules/ordens/pdf/os-pdf";
+import { paraNumero } from "@/shared/utils/moeda";
+import { gerarPixCopiaECola } from "@/shared/utils/pix";
 
 export async function GET(
   _request: Request,
@@ -28,6 +30,18 @@ export async function GET(
     return NextResponse.json({ erro: "OS não encontrada." }, { status: 404 });
   }
 
+  const totalOS = paraNumero(os.total);
+  const pixCodigo =
+    oficina?.config?.pixChave && totalOS > 0
+      ? gerarPixCopiaECola({
+          chave: oficina.config.pixChave,
+          nomeRecebedor: oficina.config.pixNomeRecebedor ?? "",
+          cidade: oficina.config.pixCidade ?? "",
+          valor: totalOS,
+          txid: `OS${String(os.numero).padStart(4, "0")}`,
+        })
+      : null;
+
   const buffer = await renderToBuffer(
     OSPdf({
       os,
@@ -38,6 +52,7 @@ export async function GET(
         estado: oficina?.config?.estado,
         cnpj: oficina?.config?.cnpj,
       },
+      pixCodigo,
     })
   );
 

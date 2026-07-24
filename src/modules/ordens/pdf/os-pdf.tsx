@@ -106,7 +106,15 @@ const estilos = StyleSheet.create({
   },
 });
 
-export function OSPdf({ os, oficina }: { os: OSCompleta; oficina: DadosOficina }) {
+export function OSPdf({
+  os,
+  oficina,
+  pixCodigo,
+}: {
+  os: OSCompleta;
+  oficina: DadosOficina;
+  pixCodigo?: string | null;
+}) {
   const numero = String(os.numero).padStart(4, "0");
   const subtotal = paraNumero(os.totalServicos) + paraNumero(os.totalPecas);
 
@@ -289,6 +297,20 @@ export function OSPdf({ os, oficina }: { os: OSCompleta; oficina: DadosOficina }
             <Text>{formatarMoeda(paraNumero(os.total))}</Text>
           </View>
         </View>
+
+        {pixCodigo ? (
+          <View style={[estilos.secao, { marginTop: 12 }]}>
+            <Text style={estilos.tituloSecao}>Pagamento via PIX</Text>
+            <View style={estilos.bloco}>
+              <Text style={estilos.rotulo}>PIX copia e cola</Text>
+              <Text
+                style={{ fontSize: 7, fontFamily: "Courier", marginTop: 2 }}
+              >
+                {pixCodigo}
+              </Text>
+            </View>
+          </View>
+        ) : null}
 
         <View style={estilos.assinaturas}>
           <Text style={estilos.campoAssinatura}>Responsável pela oficina</Text>

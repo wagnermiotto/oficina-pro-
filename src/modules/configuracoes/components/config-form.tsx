@@ -146,6 +146,46 @@ export function ConfigForm({ valoresIniciais }: { valoresIniciais: ConfigFormVal
 
       <Card>
         <CardHeader>
+          <CardTitle>Recebimento por PIX</CardTitle>
+          <CardDescription>
+            Preencha para gerar o “PIX copia e cola” automático em cada OS — sem
+            taxa e sem cadastro em gateway.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>Chave PIX</Label>
+            <Input
+              value={valores.pixChave ?? ""}
+              onChange={(e) => campo("pixChave", e.target.value)}
+              placeholder="CPF/CNPJ, e-mail, telefone ou chave aleatória"
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>Nome do recebedor</Label>
+              <Input
+                value={valores.pixNomeRecebedor ?? ""}
+                onChange={(e) => campo("pixNomeRecebedor", e.target.value)}
+                maxLength={25}
+                placeholder="Como aparece na conta (máx. 25)"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Cidade do recebedor</Label>
+              <Input
+                value={valores.pixCidade ?? ""}
+                onChange={(e) => campo("pixCidade", e.target.value)}
+                maxLength={15}
+                placeholder="Ex.: SAO PAULO (máx. 15)"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Padrões operacionais</CardTitle>
           <CardDescription>Valores sugeridos em novas ordens de serviço.</CardDescription>
         </CardHeader>

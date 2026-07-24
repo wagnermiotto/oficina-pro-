@@ -29,6 +29,9 @@ const configSchema = z.object({
   bairro: textoOpcional(80),
   cidade: textoOpcional(80),
   estado: textoOpcional(2),
+  pixChave: textoOpcional(120),
+  pixNomeRecebedor: textoOpcional(25),
+  pixCidade: textoOpcional(15),
   valorHoraPadrao: z
     .union([z.string(), z.number()])
     .optional()

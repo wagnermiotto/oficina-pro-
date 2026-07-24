@@ -80,6 +80,9 @@ async function ConteudoConfiguracoes() {
             bairro: config?.bairro ?? "",
             cidade: config?.cidade ?? "",
             estado: config?.estado ?? "",
+            pixChave: config?.pixChave ?? "",
+            pixNomeRecebedor: config?.pixNomeRecebedor ?? "",
+            pixCidade: config?.pixCidade ?? "",
             valorHoraPadrao: config ? String(paraNumero(config.valorHoraPadrao)) : "",
             impostoPadraoPercent: config
               ? String(paraNumero(config.impostoPadraoPercent))

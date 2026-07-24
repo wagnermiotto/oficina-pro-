@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { requireOficina } from "@/shared/lib/session";
 import { iaDisponivel } from "@/shared/lib/ai";
+import { gerarPixCopiaECola } from "@/shared/utils/pix";
+import { PixCard } from "@/modules/ordens/components/pix-card";
 import { obterOS, listarMecanicos } from "@/modules/ordens/services/os-service";
 import { OSIACard } from "@/modules/ordens/components/os-ia-card";
 import { OSStatusAcoes } from "@/modules/ordens/components/os-status-acoes";
@@ -41,7 +43,8 @@ export default async function OSDetalhePage({
 }) {
   const { db } = await requireOficina();
   const { id } = await params;
-  const [os, mecanicos, catalogoServicos, catalogoPecas] = await Promise.all([
+  const [os, mecanicos, catalogoServicos, catalogoPecas, config] =
+    await Promise.all([
     obterOS(db, id),
     listarMecanicos(db),
     db.servico.findMany({
@@ -60,12 +63,26 @@ export default async function OSDetalhePage({
         unidade: true,
       },
     }),
+    db.oficinaConfig.findFirst({
+      select: { pixChave: true, pixNomeRecebedor: true, pixCidade: true },
+    }),
   ]);
   if (!os) notFound();
 
   const editavel = !STATUS_NAO_EDITAVEIS.has(os.status);
   const numero = String(os.numero).padStart(4, "0");
   const aprovacaoRespondida = os.aprovacoes.find((a) => a.respondidoEm);
+  const totalOS = paraNumero(os.total);
+  const pixCodigo =
+    config?.pixChave && totalOS > 0
+      ? gerarPixCopiaECola({
+          chave: config.pixChave,
+          nomeRecebedor: config.pixNomeRecebedor ?? "",
+          cidade: config.pixCidade ?? "",
+          valor: totalOS,
+          txid: `OS${numero}`,
+        })
+      : null;
 
   return (
     <div className="space-y-6">
@@ -208,6 +225,8 @@ export default async function OSDetalhePage({
             totalPecas={paraNumero(os.totalPecas)}
             total={paraNumero(os.total)}
           />
+
+          {pixCodigo ? <PixCard codigo={pixCodigo} valor={totalOS} /> : null}
 
           {iaDisponivel() && editavel ? <OSIACard osId={os.id} /> : null}
 

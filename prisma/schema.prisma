@@ -189,6 +189,9 @@ model OficinaConfig {
   cidade                String?
   estado                String?
   logoUrl               String?
+  pixChave              String?
+  pixNomeRecebedor      String?
+  pixCidade             String?
   valorHoraPadrao       Decimal  @default(0) @db.Decimal(12, 2)
   impostoPadraoPercent  Decimal  @default(0) @db.Decimal(5, 2)
   garantiaPadraoDias    Int      @default(90)
