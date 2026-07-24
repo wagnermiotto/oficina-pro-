@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/shared/components/providers";
+import { PwaRegister } from "@/shared/components/pwa-register";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -21,6 +22,19 @@ export const metadata: Metadata = {
   },
   description:
     "SaaS completo para gestão de oficinas mecânicas de carros e motos: ordens de serviço, estoque, financeiro, agenda e muito mais.",
+  appleWebApp: {
+    capable: true,
+    title: "OficinaPro",
+    statusBarStyle: "default",
+  },
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#e9681c",
 };
 
 export default function RootLayout({
@@ -38,6 +52,7 @@ export default function RootLayout({
         <Providers>
           {children}
           <Toaster richColors position="top-right" />
+          <PwaRegister />
         </Providers>
       </body>
     </html>

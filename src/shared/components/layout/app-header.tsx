@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "./theme-toggle";
+import { GlobalSearch } from "./global-search";
 
 const TITULOS: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -32,7 +33,8 @@ export function AppHeader() {
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="mr-2 h-4" />
       <h1 className="text-sm font-semibold">{titulo}</h1>
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ml-auto flex items-center gap-2">
+        <GlobalSearch />
         <ThemeToggle />
       </div>
     </header>
