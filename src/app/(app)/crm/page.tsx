@@ -7,6 +7,10 @@ import {
   listarHistorico,
   listarLembretes,
 } from "@/modules/crm/services/crm-service";
+import {
+  listarRespostasNps,
+  resumoNps,
+} from "@/modules/crm/services/nps-service";
 import { CRMConteudo } from "@/modules/crm/components/crm-conteudo";
 import { formatarPlaca } from "@/shared/utils/placa";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,16 +21,19 @@ async function ConteudoCRM() {
   const { db } = await requireOficina();
   const hoje = startOfDay(new Date());
 
-  const [lembretes, historico, garantias, clientes] = await Promise.all([
-    listarLembretes(db),
-    listarHistorico(db),
-    listarGarantias(db),
-    db.cliente.findMany({
-      orderBy: { nome: "asc" },
-      take: 500,
-      select: { id: true, nome: true },
-    }),
-  ]);
+  const [lembretes, historico, garantias, clientes, npsResumo, npsRespostas] =
+    await Promise.all([
+      listarLembretes(db),
+      listarHistorico(db),
+      listarGarantias(db),
+      db.cliente.findMany({
+        orderBy: { nome: "asc" },
+        take: 500,
+        select: { id: true, nome: true },
+      }),
+      resumoNps(db),
+      listarRespostasNps(db),
+    ]);
 
   return (
     <CRMConteudo
@@ -60,6 +67,16 @@ async function ConteudoCRM() {
         diasRestantes: garantia.diasRestantes,
       }))}
       clientes={clientes}
+      npsResumo={npsResumo}
+      npsRespostas={npsRespostas.map((r) => ({
+        id: r.id,
+        cliente: r.cliente.nome,
+        nota: r.nota ?? 0,
+        comentario: r.comentario,
+        osId: r.ordemServico.id,
+        osNumero: r.ordemServico.numero,
+        quando: format(r.respondidoEm!, "dd/MM/yyyy"),
+      }))}
     />
   );
 }

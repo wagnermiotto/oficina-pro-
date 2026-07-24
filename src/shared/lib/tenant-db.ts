@@ -48,6 +48,7 @@ const TENANT_MODELS = new Set([
   "AuditLog",
   "ContagemEstoque",
   "ContagemItem",
+  "PesquisaNps",
 ]);
 
 const SOFT_DELETE_MODELS = new Set([

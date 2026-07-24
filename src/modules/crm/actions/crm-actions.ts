@@ -8,11 +8,34 @@ import {
   type InteracaoFormValues,
 } from "../schemas/crm-schemas";
 import * as service from "../services/crm-service";
+import { criarPesquisaNps } from "../services/nps-service";
 
 export interface ResultadoCRM {
   ok: boolean;
   erro?: string;
   id?: string;
+}
+
+/** Gera o link público de pesquisa de satisfação (NPS) de uma OS entregue. */
+export async function gerarLinkNpsAction(
+  osId: string
+): Promise<{ ok: boolean; erro?: string; url?: string }> {
+  const ctx = await requireOficina();
+  try {
+    const pesquisa = await criarPesquisaNps(ctx.db, ctx.oficinaId, osId);
+    await registrarAuditoria(ctx, {
+      acao: "CREATE",
+      entidade: "pesquisa_nps",
+      entidadeId: pesquisa.id,
+    });
+    const base = process.env.NEXT_PUBLIC_APP_URL ?? "";
+    return { ok: true, url: `${base}/nps/${pesquisa.token}` };
+  } catch (erro) {
+    return {
+      ok: false,
+      erro: erro instanceof Error ? erro.message : "Não foi possível gerar o link.",
+    };
+  }
 }
 
 export async function criarInteracaoAction(

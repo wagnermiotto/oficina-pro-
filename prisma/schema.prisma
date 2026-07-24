@@ -133,6 +133,7 @@ model Organization {
   auditLogs             AuditLog[]
   contagensEstoque      ContagemEstoque[]
   contagemItens         ContagemItem[]
+  pesquisasNps          PesquisaNps[]
 
   @@map("organization")
 }
@@ -239,6 +240,7 @@ model Cliente {
   lancamentos  LancamentoFinanceiro[]
   agendamentos Agendamento[]
   interacoes   Interacao[]
+  pesquisasNps PesquisaNps[]
 
   @@index([oficinaId, nome])
   @@index([oficinaId, cpfCnpj])
@@ -627,6 +629,7 @@ model OrdemServico {
   lancamentos   LancamentoFinanceiro[]
   comissoes     Comissao[]
   agendamentos  Agendamento[]
+  pesquisasNps  PesquisaNps[]
 
   @@unique([oficinaId, numero])
   @@index([oficinaId, status])
@@ -777,6 +780,30 @@ model Aprovacao {
 
   @@index([oficinaId, ordemServicoId])
   @@map("aprovacao")
+}
+
+/// Pesquisa de satisfação (NPS) pós-serviço. Link público de uso único, no
+/// mesmo padrão da aprovação: token não-adivinhável, respondido sem login.
+model PesquisaNps {
+  id             String    @id @default(uuid()) @db.Uuid
+  oficinaId      String
+  ordemServicoId String    @db.Uuid
+  clienteId      String    @db.Uuid
+  token          String    @unique
+  nota           Int?
+  comentario     String?
+  respondidoEm   DateTime?
+  ipRespondente  String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  oficina      Organization @relation(fields: [oficinaId], references: [id], onDelete: Cascade)
+  ordemServico OrdemServico @relation(fields: [ordemServicoId], references: [id], onDelete: Cascade)
+  cliente      Cliente      @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@index([oficinaId, ordemServicoId])
+  @@index([oficinaId, respondidoEm])
+  @@map("pesquisa_nps")
 }
 
 // =============================================================================

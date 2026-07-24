@@ -11,6 +11,7 @@ import {
   FileText,
   Loader2,
   Send,
+  Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import { TRANSICOES_OS } from "../services/os-regras";
@@ -18,6 +19,7 @@ import {
   gerarLinkAprovacaoAction,
   mudarStatusOSAction,
 } from "../actions/os-actions";
+import { gerarLinkNpsAction } from "@/modules/crm/actions/crm-actions";
 import { STATUS_OS_LABEL } from "@/shared/constants/os";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,7 +46,10 @@ export function OSStatusAcoes({ osId, status }: OSStatusAcoesProps) {
   const router = useRouter();
   const [processando, setProcessando] = useState(false);
   const [linkAprovacao, setLinkAprovacao] = useState<string | null>(null);
+  const [linkNps, setLinkNps] = useState<string | null>(null);
   const transicoes = TRANSICOES_OS[status];
+  const podeAvaliar =
+    status === "CONCLUIDO" || status === "ENTREGUE" || status === "FINALIZADO";
 
   async function mudarStatus(novo: StatusOS) {
     setProcessando(true);
@@ -76,6 +81,23 @@ export function OSStatusAcoes({ osId, status }: OSStatusAcoesProps) {
     toast.success("Link copiado! Envie por WhatsApp ou e-mail.");
   }
 
+  async function gerarNps() {
+    setProcessando(true);
+    const resultado = await gerarLinkNpsAction(osId);
+    setProcessando(false);
+    if (!resultado.ok || !resultado.url) {
+      toast.error(resultado.erro ?? "Não foi possível gerar o link.");
+      return;
+    }
+    setLinkNps(resultado.url);
+  }
+
+  async function copiarNps() {
+    if (!linkNps) return;
+    await navigator.clipboard.writeText(linkNps);
+    toast.success("Link copiado! Envie ao cliente por WhatsApp.");
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Button variant="outline" asChild>
@@ -99,6 +121,22 @@ export function OSStatusAcoes({ osId, status }: OSStatusAcoesProps) {
             <Send className="size-4" />
           )}
           Enviar para aprovação
+        </Button>
+      )}
+
+      {podeAvaliar && (
+        <Button
+          variant="outline"
+          onClick={gerarNps}
+          disabled={processando}
+          className="border-chart-5/40 text-chart-5 hover:bg-chart-5/10 hover:text-chart-5"
+        >
+          {processando ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Star className="size-4" />
+          )}
+          Pesquisa de satisfação
         </Button>
       )}
 
@@ -144,6 +182,43 @@ export function OSStatusAcoes({ osId, status }: OSStatusAcoesProps) {
           </div>
           <div className="flex justify-end">
             <Button variant="outline" onClick={() => setLinkAprovacao(null)}>
+              <Check className="size-4" /> Concluído
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(linkNps)}
+        onOpenChange={(aberto) => !aberto && setLinkNps(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Link da pesquisa de satisfação</DialogTitle>
+            <DialogDescription>
+              Envie ao cliente após a entrega. Ele dá uma nota de 0 a 10 sem
+              precisar de login. O resultado aparece no CRM (aba Satisfação).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2">
+            <Input readOnly value={linkNps ?? ""} className="font-mono text-xs" />
+            <Button onClick={copiarNps} size="icon" aria-label="Copiar link">
+              <Copy className="size-4" />
+            </Button>
+          </div>
+          <div className="flex justify-between">
+            <Button variant="outline" asChild>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(
+                  `Olá! Que tal avaliar seu atendimento? Leva 10 segundos: ${linkNps ?? ""}`
+                )}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Send className="size-4" /> Enviar por WhatsApp
+              </a>
+            </Button>
+            <Button variant="outline" onClick={() => setLinkNps(null)}>
               <Check className="size-4" /> Concluído
             </Button>
           </div>

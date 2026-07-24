@@ -13,7 +13,9 @@ import {
   Plus,
   ShieldCheck,
   ShieldX,
+  Star,
 } from "lucide-react";
+import type { ResumoNps } from "../services/nps-service";
 import { toast } from "sonner";
 import { TIPO_INTERACAO_LABEL } from "../schemas/crm-schemas";
 import {
@@ -86,6 +88,16 @@ export interface GarantiaLinha {
 export interface ClienteCRMOpcao {
   id: string;
   nome: string;
+}
+
+export interface NpsRespostaLinha {
+  id: string;
+  cliente: string;
+  nota: number;
+  comentario: string | null;
+  osId: string;
+  osNumero: number;
+  quando: string;
 }
 
 function NovaInteracaoDialog({ clientes }: { clientes: ClienteCRMOpcao[] }) {
@@ -195,6 +207,8 @@ interface CRMConteudoProps {
   historico: HistoricoLinha[];
   garantias: GarantiaLinha[];
   clientes: ClienteCRMOpcao[];
+  npsResumo: ResumoNps;
+  npsRespostas: NpsRespostaLinha[];
 }
 
 export function CRMConteudo({
@@ -202,6 +216,8 @@ export function CRMConteudo({
   historico,
   garantias,
   clientes,
+  npsResumo,
+  npsRespostas,
 }: CRMConteudoProps) {
   const router = useRouter();
 
@@ -228,6 +244,7 @@ export function CRMConteudo({
             )}
           </TabsTrigger>
           <TabsTrigger value="garantias">Garantias</TabsTrigger>
+          <TabsTrigger value="satisfacao">Satisfação</TabsTrigger>
           <TabsTrigger value="historico">Histórico</TabsTrigger>
         </TabsList>
         <NovaInteracaoDialog clientes={clientes} />
@@ -339,6 +356,95 @@ export function CRMConteudo({
                   ? `Vigente · ${garantia.diasRestantes} dia${garantia.diasRestantes === 1 ? "" : "s"} restantes`
                   : `Expirada em ${garantia.validadeAte}`}
               </Badge>
+            </div>
+          ))
+        )}
+      </TabsContent>
+
+      <TabsContent value="satisfacao" className="space-y-4 pt-3">
+        <div className="grid gap-4 sm:grid-cols-4">
+          <div className="rounded-lg border p-4 sm:col-span-1">
+            <p className="text-xs text-muted-foreground">NPS</p>
+            <p
+              className={cn(
+                "text-3xl font-bold",
+                npsResumo.score === null
+                  ? "text-muted-foreground"
+                  : npsResumo.score >= 50
+                    ? "text-chart-5"
+                    : npsResumo.score >= 0
+                      ? "text-destaque"
+                      : "text-destructive"
+              )}
+            >
+              {npsResumo.score === null ? "—" : npsResumo.score}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {npsResumo.totalRespostas} resposta
+              {npsResumo.totalRespostas === 1 ? "" : "s"}
+              {npsResumo.pendentes > 0 ? ` · ${npsResumo.pendentes} pendente(s)` : ""}
+            </p>
+          </div>
+          <div className="rounded-lg border p-4">
+            <p className="text-xs text-muted-foreground">Nota média</p>
+            <p className="text-2xl font-bold">
+              {npsResumo.media === null ? "—" : npsResumo.media}
+            </p>
+          </div>
+          <div className="rounded-lg border p-4">
+            <p className="text-xs text-muted-foreground">Promotores (9-10)</p>
+            <p className="text-2xl font-bold text-chart-5">{npsResumo.promotores}</p>
+          </div>
+          <div className="rounded-lg border p-4">
+            <p className="text-xs text-muted-foreground">Detratores (0-6)</p>
+            <p className="text-2xl font-bold text-destructive">{npsResumo.detratores}</p>
+          </div>
+        </div>
+
+        {npsRespostas.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center text-sm text-muted-foreground">
+              Nenhuma avaliação ainda. Gere o link de pesquisa numa OS entregue
+              (botão “Pesquisa de satisfação”) e envie ao cliente.
+            </CardContent>
+          </Card>
+        ) : (
+          npsRespostas.map((r) => (
+            <div
+              key={r.id}
+              className="flex flex-wrap items-start gap-3 rounded-lg border p-3"
+            >
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold",
+                  r.nota >= 9
+                    ? "bg-chart-5/15 text-chart-5"
+                    : r.nota >= 7
+                      ? "bg-destaque/15 text-destaque"
+                      : "bg-destructive/15 text-destructive"
+                )}
+              >
+                {r.nota}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">
+                  {r.cliente}{" "}
+                  <Link
+                    href={`/ordens/${r.osId}`}
+                    className="text-xs text-destaque hover:underline"
+                  >
+                    OS #{String(r.osNumero).padStart(4, "0")}
+                  </Link>
+                </p>
+                {r.comentario ? (
+                  <p className="text-sm text-muted-foreground">
+                    <Star className="mr-1 inline size-3.5" />“{r.comentario}”
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Sem comentário.</p>
+                )}
+              </div>
+              <span className="shrink-0 text-xs text-muted-foreground">{r.quando}</span>
             </div>
           ))
         )}
