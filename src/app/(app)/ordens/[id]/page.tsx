@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { requireOficina } from "@/shared/lib/session";
 import { iaDisponivel } from "@/shared/lib/ai";
+import { planoPermite } from "@/modules/plataforma/services/plano-service";
 import { gerarPixCopiaECola } from "@/shared/utils/pix";
 import { PixCard } from "@/modules/ordens/components/pix-card";
 import { obterOS, listarMecanicos } from "@/modules/ordens/services/os-service";
@@ -41,7 +42,7 @@ export default async function OSDetalhePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { db } = await requireOficina();
+  const { db, oficinaId } = await requireOficina();
   const { id } = await params;
   const [os, mecanicos, catalogoServicos, catalogoPecas, config] =
     await Promise.all([
@@ -70,6 +71,7 @@ export default async function OSDetalhePage({
   if (!os) notFound();
 
   const editavel = !STATUS_NAO_EDITAVEIS.has(os.status);
+  const iaLiberada = iaDisponivel() && (await planoPermite(oficinaId, "ia_enabled"));
   const numero = String(os.numero).padStart(4, "0");
   const aprovacaoRespondida = os.aprovacoes.find((a) => a.respondidoEm);
   const totalOS = paraNumero(os.total);
@@ -228,7 +230,7 @@ export default async function OSDetalhePage({
 
           {pixCodigo ? <PixCard codigo={pixCodigo} valor={totalOS} /> : null}
 
-          {iaDisponivel() && editavel ? <OSIACard osId={os.id} /> : null}
+          {iaLiberada && editavel ? <OSIACard osId={os.id} /> : null}
 
           {os.checkIn ? (
             <Card className="py-4">

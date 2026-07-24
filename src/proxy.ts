@@ -31,5 +31,7 @@ export const config = {
     "/equipe/:path*",
     "/configuracoes/:path*",
     "/onboarding",
+    "/matriz/:path*",
+    "/assinatura-bloqueada",
   ],
 };

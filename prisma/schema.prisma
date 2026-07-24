@@ -134,6 +134,7 @@ model Organization {
   contagensEstoque      ContagemEstoque[]
   contagemItens         ContagemItem[]
   pesquisasNps          PesquisaNps[]
+  assinatura            Assinatura?
 
   @@map("organization")
 }
@@ -204,6 +205,81 @@ model OficinaConfig {
   oficina Organization @relation(fields: [oficinaId], references: [id], onDelete: Cascade)
 
   @@map("oficina_config")
+}
+
+// =============================================================================
+// PLATAFORMA (MATRIZ / SUPER ADMIN)
+// =============================================================================
+
+/// Planos comerciais da plataforma (Starter, Professional, Premium, Enterprise).
+/// Modelos GLOBAIS — não pertencem a nenhuma oficina.
+model Plano {
+  id          String    @id @default(uuid()) @db.Uuid
+  nome        String    @unique
+  descricao   String?
+  precoMensal Decimal   @default(0) @db.Decimal(12, 2)
+  ativo       Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  recursos    RecursoPlano[]
+  assinaturas Assinatura[]
+
+  @@map("plano")
+}
+
+/// Limites e recursos de cada plano (max_users, ia_enabled, bi_enabled...).
+model RecursoPlano {
+  id        String   @id @default(uuid()) @db.Uuid
+  planoId   String   @db.Uuid
+  chave     String
+  valor     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  plano Plano @relation(fields: [planoId], references: [id], onDelete: Cascade)
+
+  @@unique([planoId, chave])
+  @@map("recurso_plano")
+}
+
+enum StatusAssinatura {
+  ATIVO
+  PENDENTE
+  ATRASADO
+  BLOQUEADO
+  SUSPENSO
+  CANCELADO
+}
+
+/// Assinatura de uma oficina na plataforma. Cobrança MANUAL: o Super Admin
+/// registra pagamentos e o sistema bloqueia sozinho após o prazo de atraso.
+model Assinatura {
+  id                String           @id @default(uuid()) @db.Uuid
+  oficinaId         String           @unique
+  planoId           String           @db.Uuid
+  status            StatusAssinatura @default(PENDENTE)
+  vencimento        DateTime
+  diasBloqueio      Int              @default(7)
+  ultimoPagamentoEm DateTime?
+  observacoes       String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  oficina Organization @relation(fields: [oficinaId], references: [id], onDelete: Cascade)
+  plano   Plano        @relation(fields: [planoId], references: [id])
+
+  @@index([status, vencimento])
+  @@map("assinatura")
+}
+
+/// Allowlist de Super Admins da plataforma (donos da Matriz).
+model PlataformaAdmin {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique
+  createdAt DateTime @default(now())
+
+  @@map("plataforma_admin")
 }
 
 // =============================================================================
