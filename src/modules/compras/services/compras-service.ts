@@ -97,6 +97,69 @@ export async function criarPedido(
   });
 }
 
+export interface SugestaoPedido {
+  fornecedorId: string | null;
+  fornecedorNome: string;
+  itens: {
+    pecaId: string;
+    descricao: string;
+    quantidade: number;
+    custoUnitario: number;
+  }[];
+}
+
+/**
+ * Sugere pedidos de compra a partir das peças no ponto de pedido
+ * (saldo ≤ estoque mínimo, com mínimo configurado), agrupadas por fornecedor.
+ * Reposição sugerida: completar até 2× o estoque mínimo.
+ */
+export async function sugerirPedidos(db: TenantDb): Promise<SugestaoPedido[]> {
+  const pecas = await db.peca.findMany({
+    where: { ativo: true, estoqueMinimo: { gt: 0 } },
+    select: {
+      id: true,
+      nome: true,
+      codigo: true,
+      quantidade: true,
+      estoqueMinimo: true,
+      precoCusto: true,
+      fornecedorId: true,
+      fornecedor: { select: { nome: true } },
+    },
+    orderBy: { nome: "asc" },
+  });
+
+  const grupos = new Map<string, SugestaoPedido>();
+  for (const p of pecas) {
+    const saldo = paraNumero(p.quantidade);
+    const minimo = paraNumero(p.estoqueMinimo);
+    if (saldo > minimo) continue;
+
+    const quantidade = Math.max(
+      Math.round((minimo * 2 - saldo) * 1000) / 1000,
+      1
+    );
+    const chave = p.fornecedorId ?? "sem-fornecedor";
+    if (!grupos.has(chave)) {
+      grupos.set(chave, {
+        fornecedorId: p.fornecedorId,
+        fornecedorNome: p.fornecedor?.nome ?? "Sem fornecedor",
+        itens: [],
+      });
+    }
+    grupos.get(chave)!.itens.push({
+      pecaId: p.id,
+      descricao: p.codigo ? `${p.nome} (${p.codigo})` : p.nome,
+      quantidade,
+      custoUnitario: paraNumero(p.precoCusto),
+    });
+  }
+
+  return [...grupos.values()].sort((a, b) =>
+    a.fornecedorNome.localeCompare(b.fornecedorNome)
+  );
+}
+
 export class TransicaoPedidoInvalidaError extends Error {
   constructor(de: StatusPedidoCompra, para: StatusPedidoCompra) {
     super(`Transição de pedido inválida: ${de} → ${para}.`);

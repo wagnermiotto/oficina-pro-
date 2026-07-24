@@ -43,9 +43,18 @@ interface ItemPedidoForm {
   custoUnitario: string;
 }
 
+export interface PedidoInicial {
+  fornecedorId?: string;
+  itens: ItemPedidoForm[];
+}
+
 interface PedidoDialogProps {
   fornecedores: FornecedorOpcao[];
   pecas: PecaCompraOpcao[];
+  /** Pré-preenche o formulário (ex.: sugestão de reposição). */
+  inicial?: PedidoInicial;
+  /** Trigger customizado; quando ausente, usa o botão "Novo pedido". */
+  trigger?: React.ReactNode;
 }
 
 const ITEM_VAZIO: ItemPedidoForm = {
@@ -55,13 +64,15 @@ const ITEM_VAZIO: ItemPedidoForm = {
   custoUnitario: "",
 };
 
-export function PedidoDialog({ fornecedores, pecas }: PedidoDialogProps) {
+export function PedidoDialog({ fornecedores, pecas, inicial, trigger }: PedidoDialogProps) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
   const [salvando, setSalvando] = useState(false);
-  const [fornecedorId, setFornecedorId] = useState("");
+  const [fornecedorId, setFornecedorId] = useState(inicial?.fornecedorId ?? "");
   const [observacoes, setObservacoes] = useState("");
-  const [itens, setItens] = useState<ItemPedidoForm[]>([{ ...ITEM_VAZIO }]);
+  const [itens, setItens] = useState<ItemPedidoForm[]>(
+    inicial?.itens.length ? inicial.itens : [{ ...ITEM_VAZIO }]
+  );
 
   function atualizarItem(indice: number, mudancas: Partial<ItemPedidoForm>) {
     setItens((atuais) =>
@@ -103,18 +114,20 @@ export function PedidoDialog({ fornecedores, pecas }: PedidoDialogProps) {
     }
     toast.success("Pedido de compra criado.");
     setAberto(false);
-    setFornecedorId("");
+    setFornecedorId(inicial?.fornecedorId ?? "");
     setObservacoes("");
-    setItens([{ ...ITEM_VAZIO }]);
+    setItens(inicial?.itens.length ? inicial.itens : [{ ...ITEM_VAZIO }]);
     router.refresh();
   }
 
   return (
     <Dialog open={aberto} onOpenChange={setAberto}>
       <DialogTrigger asChild>
-        <Button className="bg-destaque text-destaque-foreground hover:bg-destaque/90">
-          <Plus className="size-4" /> Novo pedido
-        </Button>
+        {trigger ?? (
+          <Button className="bg-destaque text-destaque-foreground hover:bg-destaque/90">
+            <Plus className="size-4" /> Novo pedido
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>

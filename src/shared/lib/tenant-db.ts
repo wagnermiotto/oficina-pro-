@@ -46,6 +46,8 @@ const TENANT_MODELS = new Set([
   "Interacao",
   "FuncionarioPerfil",
   "AuditLog",
+  "ContagemEstoque",
+  "ContagemItem",
 ]);
 
 const SOFT_DELETE_MODELS = new Set([
@@ -70,6 +72,8 @@ const SOFT_DELETE_MODELS = new Set([
   "Agendamento",
   "Interacao",
   "FuncionarioPerfil",
+  "ContagemEstoque",
+  "ContagemItem",
 ]);
 
 const READ_OPS = new Set([

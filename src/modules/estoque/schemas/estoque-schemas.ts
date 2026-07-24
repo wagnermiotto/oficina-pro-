@@ -57,6 +57,46 @@ export const categoriaSchema = z.object({
   nome: z.string().min(2, "Informe o nome.").max(80),
 });
 
+export const contagemSchema = z.object({
+  categoriaId: z
+    .string()
+    .optional()
+    .transform((v) => (v && v !== "" ? v : undefined)),
+  observacoes: textoOpcional(200),
+});
+export type ContagemFormValues = z.input<typeof contagemSchema>;
+
+export const contagemItensSchema = z.object({
+  itens: z
+    .array(
+      z.object({
+        itemId: z.string().min(1),
+        saldoContado: z
+          .union([z.string(), z.number(), z.null()])
+          .transform((v) => {
+            if (v === null || v === "") return null;
+            const n = typeof v === "number" ? v : Number(String(v).replace(",", "."));
+            return Number.isFinite(n) ? Math.round(n * 1000) / 1000 : NaN;
+          })
+          .refine((v) => v === null || (Number.isFinite(v) && v >= 0), "Saldo inválido."),
+      })
+    )
+    .min(1, "Nenhum item para salvar."),
+});
+export type ContagemItensFormValues = z.input<typeof contagemItensSchema>;
+
+export const STATUS_CONTAGEM_LABEL: Record<string, string> = {
+  ABERTA: "Aberta",
+  CONCLUIDA: "Concluída",
+  CANCELADA: "Cancelada",
+};
+
+export const STATUS_CONTAGEM_BADGE: Record<string, string> = {
+  ABERTA: "bg-chart-2/15 text-chart-2 border-chart-2/30",
+  CONCLUIDA: "bg-chart-5/15 text-chart-5 border-chart-5/30",
+  CANCELADA: "bg-muted text-muted-foreground border-border",
+};
+
 export const TIPO_MOVIMENTACAO_LABEL: Record<string, string> = {
   ENTRADA: "Entrada",
   SAIDA: "Saída",

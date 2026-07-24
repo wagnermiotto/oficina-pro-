@@ -190,6 +190,102 @@ export async function listarMovimentacoes(
   return { itens, total, totalPaginas: Math.max(1, Math.ceil(total / POR_PAGINA)) };
 }
 
+export type ClasseAbc = "A" | "B" | "C";
+
+export interface ItemCurvaAbc {
+  pecaId: string;
+  nome: string;
+  codigo: string | null;
+  unidade: string;
+  quantidade: number;
+  estoqueMinimo: number;
+  valorConsumo: number;
+  percentual: number;
+  acumulado: number;
+  classe: ClasseAbc;
+}
+
+/**
+ * Curva ABC por valor de consumo: saídas dos últimos 180 dias valoradas pelo
+ * custo da movimentação (ou custo atual da peça quando ausente).
+ * A = até 80% do valor acumulado, B = até 95%, C = restante e itens sem consumo.
+ */
+export async function curvaAbc(db: TenantDb) {
+  const corte = new Date();
+  corte.setDate(corte.getDate() - 180);
+
+  const [pecas, saidas] = await Promise.all([
+    db.peca.findMany({
+      where: { ativo: true },
+      select: {
+        id: true,
+        nome: true,
+        codigo: true,
+        unidade: true,
+        quantidade: true,
+        estoqueMinimo: true,
+        precoCusto: true,
+      },
+    }),
+    db.movimentacaoEstoque.findMany({
+      where: { tipo: "SAIDA", createdAt: { gte: corte } },
+      select: { pecaId: true, quantidade: true, custoUnitario: true },
+    }),
+  ]);
+
+  const custoPadrao = new Map(pecas.map((p) => [p.id, paraNumero(p.precoCusto)]));
+  const consumo = new Map<string, number>();
+  for (const mov of saidas) {
+    const custo = mov.custoUnitario
+      ? paraNumero(mov.custoUnitario)
+      : (custoPadrao.get(mov.pecaId) ?? 0);
+    consumo.set(
+      mov.pecaId,
+      (consumo.get(mov.pecaId) ?? 0) + paraNumero(mov.quantidade) * custo
+    );
+  }
+
+  const totalGeral = [...consumo.values()].reduce((s, v) => s + v, 0);
+  const ordenadas = [...pecas].sort(
+    (a, b) => (consumo.get(b.id) ?? 0) - (consumo.get(a.id) ?? 0)
+  );
+
+  let acumulado = 0;
+  const itens: ItemCurvaAbc[] = ordenadas.map((p) => {
+    const valor = consumo.get(p.id) ?? 0;
+    acumulado += valor;
+    const percentual = totalGeral > 0 ? (valor / totalGeral) * 100 : 0;
+    const percAcumulado = totalGeral > 0 ? (acumulado / totalGeral) * 100 : 100;
+    const classe: ClasseAbc =
+      valor === 0 ? "C" : percAcumulado <= 80 ? "A" : percAcumulado <= 95 ? "B" : "C";
+    return {
+      pecaId: p.id,
+      nome: p.nome,
+      codigo: p.codigo,
+      unidade: p.unidade,
+      quantidade: paraNumero(p.quantidade),
+      estoqueMinimo: paraNumero(p.estoqueMinimo),
+      valorConsumo: Math.round(valor * 100) / 100,
+      percentual: Math.round(percentual * 10) / 10,
+      acumulado: Math.round(percAcumulado * 10) / 10,
+      classe,
+    };
+  });
+
+  const resumo = (["A", "B", "C"] as const).map((classe) => {
+    const daClasse = itens.filter((i) => i.classe === classe);
+    const valor = daClasse.reduce((s, i) => s + i.valorConsumo, 0);
+    return {
+      classe,
+      qtdItens: daClasse.length,
+      valor: Math.round(valor * 100) / 100,
+      percentValor: totalGeral > 0 ? Math.round((valor / totalGeral) * 1000) / 10 : 0,
+    };
+  });
+
+  return { itens, resumo, totalGeral: Math.round(totalGeral * 100) / 100 };
+}
+
 export async function listarCategorias(db: TenantDb) {
   return db.categoriaPeca.findMany({ orderBy: { nome: "asc" } });
 }

@@ -9,11 +9,15 @@ import {
   listarMovimentacoes,
   listarCategorias,
   resumoEstoque,
+  curvaAbc,
 } from "@/modules/estoque/services/estoque-service";
+import { listarContagens } from "@/modules/estoque/services/contagem-service";
 import { listarFornecedores } from "@/modules/compras/services/compras-service";
 import { PecasTable } from "@/modules/estoque/components/pecas-table";
 import { PecaDialog } from "@/modules/estoque/components/peca-dialog";
 import { MovimentacaoDialog } from "@/modules/estoque/components/movimentacao-dialog";
+import { CurvaAbcTable } from "@/modules/estoque/components/curva-abc-table";
+import { ContagensSection } from "@/modules/estoque/components/contagens-section";
 import {
   TIPO_MOVIMENTACAO_BADGE,
   TIPO_MOVIMENTACAO_LABEL,
@@ -51,7 +55,7 @@ async function ConteudoEstoque({ searchParams }: Props) {
   const params = await searchParams;
   const pagina = Math.max(1, Number(params.pagina) || 1);
 
-  const [resumo, pecas, movimentacoes, categorias, fornecedores] =
+  const [resumo, pecas, movimentacoes, categorias, fornecedores, curva, contagens] =
     await Promise.all([
       resumoEstoque(db),
       listarPecas(db, {
@@ -62,6 +66,8 @@ async function ConteudoEstoque({ searchParams }: Props) {
       listarMovimentacoes(db, { pagina: 1 }),
       listarCategorias(db),
       listarFornecedores(db),
+      curvaAbc(db),
+      listarContagens(db, { pagina: 1 }),
     ]);
 
   const opcoesCategorias = categorias.map((c) => ({ id: c.id, nome: c.nome }));
@@ -98,6 +104,8 @@ async function ConteudoEstoque({ searchParams }: Props) {
           <TabsList>
             <TabsTrigger value="pecas">Peças</TabsTrigger>
             <TabsTrigger value="movimentacoes">Movimentações</TabsTrigger>
+            <TabsTrigger value="curva-abc">Curva ABC</TabsTrigger>
+            <TabsTrigger value="contagens">Contagens</TabsTrigger>
           </TabsList>
           <div className="flex gap-2">
             <MovimentacaoDialog pecas={pecasOpcao} />
@@ -215,6 +223,25 @@ async function ConteudoEstoque({ searchParams }: Props) {
               </TableBody>
             </Table>
           </div>
+        </TabsContent>
+
+        <TabsContent value="curva-abc" className="pt-3">
+          <CurvaAbcTable curva={curva} />
+        </TabsContent>
+
+        <TabsContent value="contagens" className="pt-3">
+          <ContagensSection
+            categorias={opcoesCategorias}
+            contagens={contagens.itens.map((c) => ({
+              id: c.id,
+              numero: c.numero,
+              status: c.status,
+              categoria: c.categoria?.nome ?? null,
+              qtdItens: c._count.itens,
+              createdAt: c.createdAt,
+              concluidaEm: c.concluidaEm,
+            }))}
+          />
         </TabsContent>
       </Tabs>
     </>

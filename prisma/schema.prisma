@@ -131,6 +131,8 @@ model Organization {
   interacoes            Interacao[]
   funcionarioPerfis     FuncionarioPerfil[]
   auditLogs             AuditLog[]
+  contagensEstoque      ContagemEstoque[]
+  contagemItens         ContagemItem[]
 
   @@map("organization")
 }
@@ -191,6 +193,7 @@ model OficinaConfig {
   garantiaPadraoDias    Int      @default(90)
   proximoNumeroOS       Int      @default(1)
   proximoNumeroPedido   Int      @default(1)
+  proximoNumeroContagem Int      @default(1)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -426,8 +429,9 @@ model CategoriaPeca {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  oficina Organization @relation(fields: [oficinaId], references: [id], onDelete: Cascade)
-  pecas   Peca[]
+  oficina   Organization      @relation(fields: [oficinaId], references: [id], onDelete: Cascade)
+  pecas     Peca[]
+  contagens ContagemEstoque[]
 
   @@index([oficinaId])
   @@map("categoria_peca")
@@ -482,6 +486,7 @@ model Peca {
   movimentacoes MovimentacaoEstoque[]
   osPecas       OSPeca[]
   compraItens   PedidoCompraItem[]
+  contagemItens ContagemItem[]
 
   @@index([oficinaId, nome])
   @@index([oficinaId, codigo])
@@ -515,6 +520,54 @@ model MovimentacaoEstoque {
   @@index([oficinaId, pecaId])
   @@index([oficinaId, createdAt])
   @@map("movimentacao_estoque")
+}
+
+enum StatusContagem {
+  ABERTA
+  CONCLUIDA
+  CANCELADA
+}
+
+/// Contagem cíclica de inventário: snapshot do saldo do sistema no momento da
+/// criação; ao concluir, divergências viram movimentações AJUSTE.
+model ContagemEstoque {
+  id          String         @id @default(uuid()) @db.Uuid
+  oficinaId   String
+  numero      Int
+  status      StatusContagem @default(ABERTA)
+  categoriaId String?        @db.Uuid
+  usuarioId   String?
+  observacoes String?
+  concluidaEm DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  deletedAt   DateTime?
+
+  oficina   Organization   @relation(fields: [oficinaId], references: [id], onDelete: Cascade)
+  categoria CategoriaPeca? @relation(fields: [categoriaId], references: [id])
+  itens     ContagemItem[]
+
+  @@index([oficinaId, numero])
+  @@map("contagem_estoque")
+}
+
+model ContagemItem {
+  id           String   @id @default(uuid()) @db.Uuid
+  oficinaId    String
+  contagemId   String   @db.Uuid
+  pecaId       String   @db.Uuid
+  saldoSistema Decimal  @db.Decimal(12, 3)
+  saldoContado Decimal? @db.Decimal(12, 3)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  oficina  Organization    @relation(fields: [oficinaId], references: [id], onDelete: Cascade)
+  contagem ContagemEstoque @relation(fields: [contagemId], references: [id], onDelete: Cascade)
+  peca     Peca            @relation(fields: [pecaId], references: [id])
+
+  @@index([oficinaId, contagemId])
+  @@map("contagem_item")
 }
 
 // =============================================================================
