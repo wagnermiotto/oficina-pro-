@@ -20,6 +20,10 @@ import { OSIACard } from "@/modules/ordens/components/os-ia-card";
 import { OSStatusAcoes } from "@/modules/ordens/components/os-status-acoes";
 import { OSItensCards } from "@/modules/ordens/components/os-itens-cards";
 import { OSAjustesCard } from "@/modules/ordens/components/os-ajustes-card";
+import { ChecklistCard } from "@/modules/ordens/components/checklist-card";
+import { AplicarTemplate } from "@/modules/ordens/components/aplicar-template";
+import { listarChecklist } from "@/modules/ordens/services/checklist-service";
+import { listarTemplates } from "@/modules/ordens/services/template-service";
 import { STATUS_OS_BADGE, STATUS_OS_LABEL } from "@/shared/constants/os";
 import { paraNumero } from "@/shared/utils/moeda";
 import { formatarPlaca } from "@/shared/utils/placa";
@@ -44,7 +48,7 @@ export default async function OSDetalhePage({
 }) {
   const { db, oficinaId } = await requireOficina();
   const { id } = await params;
-  const [os, mecanicos, catalogoServicos, catalogoPecas, config] =
+  const [os, mecanicos, catalogoServicos, catalogoPecas, config, checklist, templates] =
     await Promise.all([
     obterOS(db, id),
     listarMecanicos(db),
@@ -67,6 +71,8 @@ export default async function OSDetalhePage({
     db.oficinaConfig.findFirst({
       select: { pixChave: true, pixNomeRecebedor: true, pixCidade: true },
     }),
+    listarChecklist(db, id),
+    listarTemplates(db),
   ]);
   if (!os) notFound();
 
@@ -113,7 +119,15 @@ export default async function OSDetalhePage({
             </p>
           </div>
         </div>
-        <OSStatusAcoes osId={os.id} status={os.status} />
+        <div className="flex flex-wrap items-center gap-2">
+          {editavel ? (
+            <AplicarTemplate
+              osId={os.id}
+              templates={templates.map((t) => ({ id: t.id, nome: t.nome, itens: t.itens.length }))}
+            />
+          ) : null}
+          <OSStatusAcoes osId={os.id} status={os.status} />
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -229,6 +243,12 @@ export default async function OSDetalhePage({
           />
 
           {pixCodigo ? <PixCard codigo={pixCodigo} valor={totalOS} /> : null}
+
+          <ChecklistCard
+            osId={os.id}
+            editavel={editavel}
+            itens={checklist.map((c) => ({ id: c.id, item: c.item, status: c.status }))}
+          />
 
           {iaLiberada && editavel ? <OSIACard osId={os.id} /> : null}
 

@@ -5,6 +5,8 @@ import { requireOficina } from "@/shared/lib/session";
 import { prisma } from "@/shared/lib/prisma";
 import { paraNumero } from "@/shared/utils/moeda";
 import { ConfigForm } from "@/modules/configuracoes/components/config-form";
+import { TemplatesSection } from "@/modules/ordens/components/templates-section";
+import { listarTemplates } from "@/modules/ordens/services/template-service";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -27,7 +29,7 @@ export const metadata: Metadata = { title: "Configurações" };
 async function ConteudoConfiguracoes() {
   const { db, oficinaId } = await requireOficina();
 
-  const [oficina, config, auditoria] = await Promise.all([
+  const [oficina, config, auditoria, templates] = await Promise.all([
     prisma.organization.findUnique({
       where: { id: oficinaId },
       select: { name: true },
@@ -37,6 +39,7 @@ async function ConteudoConfiguracoes() {
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
+    listarTemplates(db),
   ]);
 
   const usuarios =
@@ -62,6 +65,7 @@ async function ConteudoConfiguracoes() {
     <Tabs defaultValue="dados">
       <TabsList>
         <TabsTrigger value="dados">Dados da oficina</TabsTrigger>
+        <TabsTrigger value="pacotes">Pacotes de serviço</TabsTrigger>
         <TabsTrigger value="auditoria">Auditoria</TabsTrigger>
       </TabsList>
 
@@ -89,6 +93,17 @@ async function ConteudoConfiguracoes() {
               : "",
             garantiaPadraoDias: config ? String(config.garantiaPadraoDias) : "90",
           }}
+        />
+      </TabsContent>
+
+      <TabsContent value="pacotes" className="pt-3">
+        <TemplatesSection
+          templates={templates.map((t) => ({
+            id: t.id,
+            nome: t.nome,
+            tipoVeiculo: t.tipoVeiculo,
+            itens: t.itens.map((i) => ({ tipo: i.tipo, descricao: i.descricao })),
+          }))}
         />
       </TabsContent>
 

@@ -9,6 +9,7 @@ import {
   ChevronDown,
   Copy,
   FileText,
+  Link2,
   Loader2,
   Send,
   Star,
@@ -17,6 +18,7 @@ import { toast } from "sonner";
 import { TRANSICOES_OS } from "../services/os-regras";
 import {
   gerarLinkAprovacaoAction,
+  gerarLinkPortalAction,
   mudarStatusOSAction,
 } from "../actions/os-actions";
 import { gerarLinkNpsAction } from "@/modules/crm/actions/crm-actions";
@@ -47,6 +49,7 @@ export function OSStatusAcoes({ osId, status }: OSStatusAcoesProps) {
   const [processando, setProcessando] = useState(false);
   const [linkAprovacao, setLinkAprovacao] = useState<string | null>(null);
   const [linkNps, setLinkNps] = useState<string | null>(null);
+  const [linkPortal, setLinkPortal] = useState<string | null>(null);
   const transicoes = TRANSICOES_OS[status];
   const podeAvaliar =
     status === "CONCLUIDO" || status === "ENTREGUE" || status === "FINALIZADO";
@@ -98,12 +101,34 @@ export function OSStatusAcoes({ osId, status }: OSStatusAcoesProps) {
     toast.success("Link copiado! Envie ao cliente por WhatsApp.");
   }
 
+  async function gerarPortal() {
+    setProcessando(true);
+    const resultado = await gerarLinkPortalAction(osId);
+    setProcessando(false);
+    if (!resultado.ok || !resultado.url) {
+      toast.error(resultado.erro ?? "Não foi possível gerar o link.");
+      return;
+    }
+    setLinkPortal(resultado.url);
+  }
+
+  async function copiarPortal() {
+    if (!linkPortal) return;
+    await navigator.clipboard.writeText(linkPortal);
+    toast.success("Link do portal copiado!");
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Button variant="outline" asChild>
         <a href={`/ordens/${osId}/pdf`} target="_blank" rel="noreferrer">
           <FileText className="size-4" /> PDF
         </a>
+      </Button>
+
+      <Button variant="outline" onClick={gerarPortal} disabled={processando}>
+        {processando ? <Loader2 className="size-4 animate-spin" /> : <Link2 className="size-4" />}
+        Portal do cliente
       </Button>
 
       {(status === "RECEBIDO" ||
@@ -219,6 +244,43 @@ export function OSStatusAcoes({ osId, status }: OSStatusAcoesProps) {
               </a>
             </Button>
             <Button variant="outline" onClick={() => setLinkNps(null)}>
+              <Check className="size-4" /> Concluído
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(linkPortal)}
+        onOpenChange={(aberto) => !aberto && setLinkPortal(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Portal do cliente</DialogTitle>
+            <DialogDescription>
+              Link único para o cliente acompanhar a OS (status, itens e
+              histórico do veículo) sem precisar de login. Envie por WhatsApp.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2">
+            <Input readOnly value={linkPortal ?? ""} className="font-mono text-xs" />
+            <Button onClick={copiarPortal} size="icon" aria-label="Copiar link">
+              <Copy className="size-4" />
+            </Button>
+          </div>
+          <div className="flex justify-between">
+            <Button variant="outline" asChild>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(
+                  `Acompanhe o serviço do seu veículo em tempo real: ${linkPortal ?? ""}`
+                )}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Send className="size-4" /> Enviar por WhatsApp
+              </a>
+            </Button>
+            <Button variant="outline" onClick={() => setLinkPortal(null)}>
               <Check className="size-4" /> Concluído
             </Button>
           </div>

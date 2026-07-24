@@ -18,7 +18,14 @@ import {
 } from "../schemas/os-schemas";
 import * as osService from "../services/os-service";
 import { criarAprovacao } from "../services/aprovacao-service";
+import {
+  atualizarItemChecklist,
+  criarChecklist,
+} from "../services/checklist-service";
+import { aplicarTemplateNaOS } from "../services/template-service";
+import { gerarPortalToken } from "../services/portal-service";
 import { paraNumero } from "@/shared/utils/moeda";
+import type { StatusChecklist } from "@prisma/client";
 
 export interface ResultadoOS {
   ok: boolean;
@@ -83,6 +90,65 @@ export async function mudarStatusOSAction(
     revalidatePath("/ordens");
     revalidatePath(`/ordens/${osId}`);
     return { ok: true, id: osId };
+  } catch (erro) {
+    return { ok: false, erro: mensagemDe(erro) };
+  }
+}
+
+// --- Portal do cliente -------------------------------------------------------
+
+export async function gerarLinkPortalAction(osId: string): Promise<ResultadoOS> {
+  const ctx = await requireOficina();
+  try {
+    const token = await gerarPortalToken(ctx.db, osId);
+    const base = process.env.NEXT_PUBLIC_APP_URL ?? "";
+    return { ok: true, url: `${base}/portal/${token}` };
+  } catch (erro) {
+    return { ok: false, erro: mensagemDe(erro) };
+  }
+}
+
+// --- Checklist de inspeção (DVI) --------------------------------------------
+
+export async function iniciarChecklistAction(osId: string): Promise<ResultadoOS> {
+  const ctx = await requireOficina();
+  try {
+    await criarChecklist(ctx.db, ctx.oficinaId, osId);
+    revalidatePath(`/ordens/${osId}`);
+    return { ok: true };
+  } catch (erro) {
+    return { ok: false, erro: mensagemDe(erro) };
+  }
+}
+
+export async function atualizarChecklistAction(
+  osId: string,
+  itemId: string,
+  status: StatusChecklist,
+  observacao?: string
+): Promise<ResultadoOS> {
+  const ctx = await requireOficina();
+  try {
+    await atualizarItemChecklist(ctx.db, itemId, status, observacao);
+    revalidatePath(`/ordens/${osId}`);
+    return { ok: true };
+  } catch (erro) {
+    return { ok: false, erro: mensagemDe(erro) };
+  }
+}
+
+// --- Templates de serviço ----------------------------------------------------
+
+export async function aplicarTemplateOSAction(
+  osId: string,
+  templateId: string
+): Promise<ResultadoOS> {
+  const ctx = await requireOficina();
+  try {
+    const qtd = await aplicarTemplateNaOS(ctx.db, ctx.oficinaId, osId, templateId);
+    await osService.recalcularTotais(ctx.db, osId);
+    revalidatePath(`/ordens/${osId}`);
+    return { ok: true, erro: qtd === 0 ? "Template vazio." : undefined };
   } catch (erro) {
     return { ok: false, erro: mensagemDe(erro) };
   }

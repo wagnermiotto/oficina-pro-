@@ -135,6 +135,9 @@ model Organization {
   contagemItens         ContagemItem[]
   pesquisasNps          PesquisaNps[]
   assinatura            Assinatura?
+  checklistsOS          ChecklistOS[]
+  templatesServico      TemplateServico[]
+  templateServicoItens  TemplateServicoItem[]
 
   @@map("organization")
 }
@@ -569,6 +572,7 @@ model Peca {
   osPecas       OSPeca[]
   compraItens   PedidoCompraItem[]
   contagemItens ContagemItem[]
+  templateItens TemplateServicoItem[]
 
   @@index([oficinaId, nome])
   @@index([oficinaId, codigo])
@@ -673,6 +677,8 @@ model OrdemServico {
   id                 String    @id @default(uuid()) @db.Uuid
   oficinaId          String
   numero             Int
+  /// Token permanente do Portal do Cliente (link público da OS).
+  portalToken        String?   @unique
   clienteId          String    @db.Uuid
   veiculoId          String    @db.Uuid
   mecanicoId         String?
@@ -710,6 +716,7 @@ model OrdemServico {
   comissoes     Comissao[]
   agendamentos  Agendamento[]
   pesquisasNps  PesquisaNps[]
+  checklist     ChecklistOS[]
 
   @@unique([oficinaId, numero])
   @@index([oficinaId, status])
@@ -884,6 +891,77 @@ model PesquisaNps {
   @@index([oficinaId, ordemServicoId])
   @@index([oficinaId, respondidoEm])
   @@map("pesquisa_nps")
+}
+
+enum StatusChecklist {
+  NAO_VERIFICADO
+  OK
+  ATENCAO
+  REPROVADO
+}
+
+/// Item do checklist digital de inspeção (DVI) de uma OS.
+model ChecklistOS {
+  id             String          @id @default(uuid()) @db.Uuid
+  oficinaId      String
+  ordemServicoId String          @db.Uuid
+  item           String
+  status         StatusChecklist @default(NAO_VERIFICADO)
+  observacao     String?
+  ordem          Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  oficina      Organization @relation(fields: [oficinaId], references: [id], onDelete: Cascade)
+  ordemServico OrdemServico @relation(fields: [ordemServicoId], references: [id], onDelete: Cascade)
+
+  @@index([oficinaId, ordemServicoId])
+  @@map("checklist_os")
+}
+
+enum TipoItemTemplate {
+  SERVICO
+  PECA
+}
+
+/// Pacote de serviço recorrente (ex.: "Revisão 10 mil km") aplicável a uma OS.
+model TemplateServico {
+  id          String       @id @default(uuid()) @db.Uuid
+  oficinaId   String
+  nome        String
+  descricao   String?
+  tipoVeiculo TipoVeiculo?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
+
+  oficina Organization          @relation(fields: [oficinaId], references: [id], onDelete: Cascade)
+  itens   TemplateServicoItem[]
+
+  @@index([oficinaId, nome])
+  @@map("template_servico")
+}
+
+model TemplateServicoItem {
+  id         String           @id @default(uuid()) @db.Uuid
+  oficinaId  String
+  templateId String           @db.Uuid
+  tipo       TipoItemTemplate
+  descricao  String
+  valor      Decimal          @default(0) @db.Decimal(12, 2)
+  quantidade Decimal          @default(1) @db.Decimal(12, 3)
+  pecaId     String?          @db.Uuid
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  deletedAt  DateTime?
+
+  oficina  Organization    @relation(fields: [oficinaId], references: [id], onDelete: Cascade)
+  template TemplateServico @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  peca     Peca?           @relation(fields: [pecaId], references: [id])
+
+  @@index([oficinaId, templateId])
+  @@map("template_servico_item")
 }
 
 // =============================================================================
