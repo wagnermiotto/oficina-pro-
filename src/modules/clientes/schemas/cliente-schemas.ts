@@ -15,6 +15,10 @@ export const clienteSchema = z.object({
     .transform((v) => (v && v.trim() !== "" ? somenteDigitos(v) : undefined)),
   telefone: textoOpcional(20),
   whatsapp: textoOpcional(20),
+  dataNascimento: z
+    .string()
+    .optional()
+    .transform((v) => (v && v.trim() !== "" ? v : undefined)),
   email: z
     .union([z.literal(""), z.email("E-mail inválido.")])
     .optional()

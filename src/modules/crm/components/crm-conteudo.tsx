@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { TipoInteracao } from "@prisma/client";
 import {
   BellRing,
+  Cake,
   Check,
   Loader2,
   MessageCircle,
@@ -13,7 +14,9 @@ import {
   Plus,
   ShieldCheck,
   ShieldX,
+  Sparkles,
   Star,
+  Wrench,
 } from "lucide-react";
 import type { ResumoNps } from "../services/nps-service";
 import { toast } from "sonner";
@@ -97,6 +100,15 @@ export interface NpsRespostaLinha {
   comentario: string | null;
   osId: string;
   osNumero: number;
+  quando: string;
+}
+
+export interface LembreteAutomaticoLinha {
+  tipo: "aniversario" | "revisao";
+  clienteId: string;
+  cliente: string;
+  contato: string | null;
+  detalhe: string;
   quando: string;
 }
 
@@ -207,6 +219,7 @@ interface CRMConteudoProps {
   historico: HistoricoLinha[];
   garantias: GarantiaLinha[];
   clientes: ClienteCRMOpcao[];
+  automaticos: LembreteAutomaticoLinha[];
   npsResumo: ResumoNps;
   npsRespostas: NpsRespostaLinha[];
 }
@@ -216,6 +229,7 @@ export function CRMConteudo({
   historico,
   garantias,
   clientes,
+  automaticos,
   npsResumo,
   npsRespostas,
 }: CRMConteudoProps) {
@@ -237,9 +251,9 @@ export function CRMConteudo({
         <TabsList>
           <TabsTrigger value="lembretes">
             Lembretes{" "}
-            {lembretes.length > 0 && (
+            {lembretes.length + automaticos.length > 0 && (
               <Badge className="ml-1 bg-destaque text-destaque-foreground">
-                {lembretes.length}
+                {lembretes.length + automaticos.length}
               </Badge>
             )}
           </TabsTrigger>
@@ -251,6 +265,59 @@ export function CRMConteudo({
       </div>
 
       <TabsContent value="lembretes" className="space-y-2 pt-3">
+        {automaticos.length > 0 && (
+          <div className="space-y-2 rounded-lg border border-dashed border-destaque/40 bg-destaque/5 p-3">
+            <p className="flex items-center gap-2 text-sm font-medium text-destaque">
+              <Sparkles className="size-4" /> Sugeridos automaticamente
+            </p>
+            {automaticos.map((a, i) => {
+              const texto =
+                a.tipo === "aniversario"
+                  ? `Olá ${a.cliente.split(" ")[0]}! A ${""}equipe da oficina passa para desejar feliz aniversário! 🎉`
+                  : `Olá ${a.cliente.split(" ")[0]}! Já faz um tempo desde a última revisão. Que tal agendar uma checagem do seu veículo?`;
+              return (
+                <div
+                  key={`${a.tipo}-${a.clienteId}-${i}`}
+                  className="flex flex-wrap items-center gap-3 rounded-md bg-background p-2"
+                >
+                  {a.tipo === "aniversario" ? (
+                    <Cake className="size-4 shrink-0 text-destaque" />
+                  ) : (
+                    <Wrench className="size-4 shrink-0 text-chart-2" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">
+                      <Link
+                        href={`/clientes/${a.clienteId}`}
+                        className="hover:text-destaque hover:underline"
+                      >
+                        {a.cliente}
+                      </Link>
+                      {a.contato ? (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {a.contato}
+                        </span>
+                      ) : null}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">{a.detalhe}</p>
+                  </div>
+                  {a.contato ? (
+                    <Button variant="outline" size="sm" asChild>
+                      <a
+                        href={`https://wa.me/55${a.contato.replace(/\D/g, "")}?text=${encodeURIComponent(texto)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <MessageCircle className="size-3.5" /> WhatsApp
+                      </a>
+                    </Button>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {lembretes.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-sm text-muted-foreground">

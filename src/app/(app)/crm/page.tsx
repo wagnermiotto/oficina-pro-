@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { format, isBefore, startOfDay } from "date-fns";
 import { requireOficina } from "@/shared/lib/session";
 import {
+  lembretesAutomaticos,
   listarGarantias,
   listarHistorico,
   listarLembretes,
@@ -21,19 +22,27 @@ async function ConteudoCRM() {
   const { db } = await requireOficina();
   const hoje = startOfDay(new Date());
 
-  const [lembretes, historico, garantias, clientes, npsResumo, npsRespostas] =
-    await Promise.all([
-      listarLembretes(db),
-      listarHistorico(db),
-      listarGarantias(db),
-      db.cliente.findMany({
-        orderBy: { nome: "asc" },
-        take: 500,
-        select: { id: true, nome: true },
-      }),
-      resumoNps(db),
-      listarRespostasNps(db),
-    ]);
+  const [
+    lembretes,
+    automaticos,
+    historico,
+    garantias,
+    clientes,
+    npsResumo,
+    npsRespostas,
+  ] = await Promise.all([
+    listarLembretes(db),
+    lembretesAutomaticos(db),
+    listarHistorico(db),
+    listarGarantias(db),
+    db.cliente.findMany({
+      orderBy: { nome: "asc" },
+      take: 500,
+      select: { id: true, nome: true },
+    }),
+    resumoNps(db),
+    listarRespostasNps(db),
+  ]);
 
   return (
     <CRMConteudo
@@ -67,6 +76,14 @@ async function ConteudoCRM() {
         diasRestantes: garantia.diasRestantes,
       }))}
       clientes={clientes}
+      automaticos={automaticos.map((a) => ({
+        tipo: a.tipo,
+        clienteId: a.clienteId,
+        cliente: a.cliente,
+        contato: a.contato,
+        detalhe: a.detalhe,
+        quando: format(a.quando, "dd/MM"),
+      }))}
       npsResumo={npsResumo}
       npsRespostas={npsRespostas.map((r) => ({
         id: r.id,

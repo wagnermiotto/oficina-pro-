@@ -223,6 +223,7 @@ model Cliente {
   cpfCnpj     String?
   telefone    String?
   whatsapp    String?
+  dataNascimento DateTime? @db.Date
   email       String?
   cep         String?
   endereco    String?

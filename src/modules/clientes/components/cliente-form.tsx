@@ -59,6 +59,7 @@ export function ClienteForm({
       cpfCnpj: "",
       telefone: "",
       whatsapp: "",
+      dataNascimento: "",
       email: "",
       cep: "",
       endereco: "",
@@ -195,6 +196,22 @@ export function ClienteForm({
                           field.onChange(formatarTelefone(e.target.value))
                         }
                       />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="dataNascimento"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Aniversário (opcional)</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

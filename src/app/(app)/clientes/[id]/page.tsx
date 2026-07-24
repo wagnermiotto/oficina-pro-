@@ -71,6 +71,9 @@ export default async function ClienteDetalhePage({
             cpfCnpj: cliente.cpfCnpj ?? "",
             telefone: cliente.telefone ?? "",
             whatsapp: cliente.whatsapp ?? "",
+            dataNascimento: cliente.dataNascimento
+              ? cliente.dataNascimento.toISOString().slice(0, 10)
+              : "",
             email: cliente.email ?? "",
             cep: cliente.cep ?? "",
             endereco: cliente.endereco ?? "",
