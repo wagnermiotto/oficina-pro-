@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { StatusPedidoCompra } from "@prisma/client";
-import { requireOficina } from "@/shared/lib/session";
+import { guardPermissao, requireOficina } from "@/shared/lib/session";
 import { registrarAuditoria } from "@/shared/lib/audit";
 import {
   fornecedorSchema,
@@ -26,6 +26,8 @@ export async function criarFornecedorAction(
   valores: FornecedorFormValues
 ): Promise<ResultadoCompras> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "compras", "CRIAR");
+  if (negado) return negado;
   const parse = fornecedorSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };
@@ -46,6 +48,8 @@ export async function atualizarFornecedorAction(
   valores: FornecedorFormValues
 ): Promise<ResultadoCompras> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "compras", "EDITAR");
+  if (negado) return negado;
   const parse = fornecedorSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };
@@ -61,6 +65,8 @@ export async function atualizarFornecedorAction(
 
 export async function excluirFornecedorAction(id: string): Promise<ResultadoCompras> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "compras", "EXCLUIR");
+  if (negado) return negado;
   try {
     await service.excluirFornecedor(ctx.db, id);
     await registrarAuditoria(ctx, {
@@ -79,6 +85,8 @@ export async function criarPedidoAction(
   valores: PedidoCompraFormValues
 ): Promise<ResultadoCompras> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "compras", "CRIAR");
+  if (negado) return negado;
   const parse = pedidoCompraSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };
@@ -104,6 +112,8 @@ export async function mudarStatusPedidoAction(
   notaFiscal?: string
 ): Promise<ResultadoCompras> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "compras", "EDITAR");
+  if (negado) return negado;
   try {
     await service.mudarStatusPedido(
       ctx.db,

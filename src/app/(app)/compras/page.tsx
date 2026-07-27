@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { format } from "date-fns";
-import { requireOficina } from "@/shared/lib/session";
+import { requireOficina, requirePermissaoPage } from "@/shared/lib/session";
 import {
   listarFornecedores,
   listarPedidos,
@@ -28,7 +28,9 @@ interface Props {
 }
 
 async function ConteudoCompras({ searchParams }: Props) {
-  const { db } = await requireOficina();
+  const ctx = await requireOficina();
+  await requirePermissaoPage(ctx, "compras");
+  const { db } = ctx;
   const params = await searchParams;
   const pagina = Math.max(1, Number(params.pagina) || 1);
 

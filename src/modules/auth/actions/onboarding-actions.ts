@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/shared/lib/auth";
 import { prisma } from "@/shared/lib/prisma";
 import { requireSessao } from "@/shared/lib/session";
+import { semearPerfisPadrao } from "@/modules/permissoes/services/permissoes-service";
 import {
   onboardingSchema,
   type OnboardingInput,
@@ -54,26 +55,29 @@ export async function concluirOnboarding(
     headers: reqHeaders,
   });
 
-  await prisma.$transaction([
-    prisma.oficinaConfig.create({
+  await prisma.$transaction(async (tx) => {
+    await tx.oficinaConfig.create({
       data: {
         oficinaId: org.id,
         telefone: telefone || null,
         cidade: cidade || null,
         estado: estado || null,
       },
-    }),
-    prisma.funcionarioPerfil.create({
+    });
+    // Perfis RBAC padrão da oficina; o fundador nasce como Proprietário.
+    const proprietarioId = await semearPerfisPadrao(tx, org.id);
+    await tx.funcionarioPerfil.create({
       data: {
         oficinaId: org.id,
         userId: sessao.user.id,
         cargo: "ADMIN",
+        perfilAcessoId: proprietarioId,
       },
-    }),
-    prisma.centroCusto.create({
+    });
+    await tx.centroCusto.create({
       data: { oficinaId: org.id, nome: "Geral" },
-    }),
-  ]);
+    });
+  });
 
   redirect("/dashboard");
 }

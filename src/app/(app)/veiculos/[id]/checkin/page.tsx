@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { requireOficina } from "@/shared/lib/session";
+import { requireOficina, requirePermissaoPage } from "@/shared/lib/session";
 import { CheckInForm } from "@/modules/checkin/components/checkin-form";
 import { formatarPlaca } from "@/shared/utils/placa";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,9 @@ export default async function NovoCheckInPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { db } = await requireOficina();
+  const ctx = await requireOficina();
+  await requirePermissaoPage(ctx, "ordens", "CRIAR");
+  const { db } = ctx;
   const { id } = await params;
   const veiculo = await db.veiculo.findUnique({
     where: { id },

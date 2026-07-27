@@ -2,9 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireOficina, requireCargo } from "@/shared/lib/session";
+import {
+  getPermissoes,
+  guardPermissao,
+  isSuperAdmin,
+  requireOficina,
+} from "@/shared/lib/session";
 import { registrarAuditoria } from "@/shared/lib/audit";
 import { textoOpcional } from "@/shared/utils/zod";
+import {
+  CHAVE_PROPRIETARIO,
+  existeOutroEditorDePermissoes,
+} from "@/modules/permissoes/services/permissoes-service";
 
 const perfilSchema = z.object({
   cargo: z.enum([
@@ -15,6 +24,7 @@ const perfilSchema = z.object({
     "FINANCEIRO",
     "ESTOQUISTA",
   ]),
+  perfilAcessoId: z.string().uuid().nullable().optional(),
   especialidade: textoOpcional(80),
   comissaoPercent: z
     .union([z.string(), z.number()])
@@ -50,11 +60,8 @@ export async function salvarPerfilAction(
   valores: PerfilFormValues
 ): Promise<ResultadoEquipe> {
   const ctx = await requireOficina();
-  try {
-    await requireCargo(ctx, "ADMIN", "GERENTE");
-  } catch {
-    return { ok: false, erro: "Apenas administradores e gerentes editam a equipe." };
-  }
+  const negado = await guardPermissao(ctx, "equipe", "EDITAR");
+  if (negado) return negado;
   const parse = perfilSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };
@@ -63,38 +70,95 @@ export async function salvarPerfilAction(
 
   const existente = await ctx.db.funcionarioPerfil.findFirst({
     where: { userId },
+    include: {
+      perfilAcesso: {
+        select: {
+          id: true,
+          chave: true,
+          permissoes: {
+            where: { modulo: "permissoes", acao: "EDITAR" },
+            select: { id: true },
+          },
+        },
+      },
+    },
   });
+
+  const perfilNovoId = dados.perfilAcessoId ?? null;
+  const perfilAtualId = existente?.perfilAcessoId ?? null;
+  const mudouPerfil = perfilAtualId !== perfilNovoId;
+
+  if (mudouPerfil) {
+    // Trocar o perfil de acesso de alguém é administrar permissões.
+    const negadoPermissoes = await guardPermissao(ctx, "permissoes", "EDITAR");
+    if (negadoPermissoes) return negadoPermissoes;
+  }
+
+  // Proteção do Proprietário: só outro Proprietário (ou Super Admin) pode
+  // rebaixar ou inativar quem tem o perfil Proprietário.
+  const alvoEProprietario = existente?.perfilAcesso?.chave === CHAVE_PROPRIETARIO;
+  if (alvoEProprietario && (mudouPerfil || !dados.ativo)) {
+    const [minhas, superAdmin] = await Promise.all([
+      getPermissoes(ctx),
+      isSuperAdmin(ctx.usuario.id),
+    ]);
+    if (minhas.perfilChave !== CHAVE_PROPRIETARIO && !superAdmin) {
+      return {
+        ok: false,
+        erro: "Apenas o Proprietário pode alterar outro Proprietário.",
+      };
+    }
+  }
+
+  // Regra do último editor: não deixar a oficina sem ninguém que administre
+  // permissões (ao rebaixar para um perfil sem permissoes.EDITAR ou inativar).
+  const alvoEEditor = (existente?.perfilAcesso?.permissoes.length ?? 0) > 0;
+  if (alvoEEditor && existente?.ativo) {
+    let perde = !dados.ativo;
+    if (!perde && mudouPerfil) {
+      const novoConcede = perfilNovoId
+        ? await ctx.db.permissaoPerfil.findFirst({
+            where: { perfilId: perfilNovoId, modulo: "permissoes", acao: "EDITAR" },
+            select: { id: true },
+          })
+        : null;
+      perde = !novoConcede;
+    }
+    if (perde && !(await existeOutroEditorDePermissoes(ctx.db, { userId }))) {
+      return {
+        ok: false,
+        erro: "A oficina ficaria sem ninguém para gerenciar permissões.",
+      };
+    }
+  }
+
+  const persistir = {
+    cargo: dados.cargo,
+    perfilAcessoId: perfilNovoId,
+    especialidade: dados.especialidade ?? null,
+    comissaoPercent: dados.comissaoPercent,
+    salario: dados.salario ?? null,
+    telefone: dados.telefone ?? null,
+    ativo: dados.ativo,
+  };
   if (existente) {
     await ctx.db.funcionarioPerfil.update({
       where: { id: existente.id },
-      data: {
-        cargo: dados.cargo,
-        especialidade: dados.especialidade ?? null,
-        comissaoPercent: dados.comissaoPercent,
-        salario: dados.salario ?? null,
-        telefone: dados.telefone ?? null,
-        ativo: dados.ativo,
-      },
+      data: persistir,
     });
   } else {
     await ctx.db.funcionarioPerfil.create({
-      data: {
-        oficinaId: ctx.oficinaId,
-        userId,
-        cargo: dados.cargo,
-        especialidade: dados.especialidade ?? null,
-        comissaoPercent: dados.comissaoPercent,
-        salario: dados.salario ?? null,
-        telefone: dados.telefone ?? null,
-        ativo: dados.ativo,
-      },
+      data: { oficinaId: ctx.oficinaId, userId, ...persistir },
     });
   }
   await registrarAuditoria(ctx, {
     acao: "UPDATE",
     entidade: "funcionario_perfil",
     entidadeId: userId,
-    depois: dados,
+    antes: existente
+      ? { perfilAcessoId: perfilAtualId, ativo: existente.ativo, cargo: existente.cargo }
+      : undefined,
+    depois: { ...dados, perfilAcessoId: perfilNovoId },
   });
   revalidatePath("/equipe");
   return { ok: true };

@@ -1,6 +1,6 @@
 "use server";
 
-import { requireOficina } from "@/shared/lib/session";
+import { guardPermissao, requireOficina } from "@/shared/lib/session";
 import {
   gerarMensagemWhatsApp,
   gerarSugestaoDiagnostico,
@@ -19,6 +19,8 @@ export async function sugerirDiagnosticoIAAction(
   osId: string
 ): Promise<ResultadoIA> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "ordens", "EDITAR");
+  if (negado) return negado;
   if (!iaDisponivel()) {
     return { ok: false, erro: "IA não configurada (defina ANTHROPIC_API_KEY)." };
   }
@@ -59,6 +61,9 @@ export async function gerarMensagemWhatsAppIAAction(
   osId: string
 ): Promise<ResultadoIA> {
   const ctx = await requireOficina();
+  // Mensagem ao cliente contém valores e link de aprovação.
+  const negado = await guardPermissao(ctx, "ordens", "ENVIAR_APROVACAO");
+  if (negado) return negado;
   if (!iaDisponivel()) {
     return { ok: false, erro: "IA não configurada (defina ANTHROPIC_API_KEY)." };
   }

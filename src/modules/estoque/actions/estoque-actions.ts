@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireOficina } from "@/shared/lib/session";
+import { guardPermissao, requireOficina } from "@/shared/lib/session";
 import { registrarAuditoria } from "@/shared/lib/audit";
 import { paraNumero } from "@/shared/utils/moeda";
 import {
@@ -32,6 +32,8 @@ export async function criarPecaAction(
   valores: PecaFormValues
 ): Promise<ResultadoEstoque> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "estoque", "CRIAR");
+  if (negado) return negado;
   const parse = pecaSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };
@@ -61,6 +63,8 @@ export async function atualizarPecaAction(
   valores: PecaFormValues
 ): Promise<ResultadoEstoque> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "estoque", "EDITAR");
+  if (negado) return negado;
   const parse = pecaSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };
@@ -85,6 +89,8 @@ export async function atualizarPecaAction(
 
 export async function excluirPecaAction(id: string): Promise<ResultadoEstoque> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "estoque", "EXCLUIR");
+  if (negado) return negado;
   try {
     await service.excluirPeca(ctx.db, id);
     await registrarAuditoria(ctx, {
@@ -103,6 +109,8 @@ export async function registrarMovimentacaoAction(
   valores: MovimentacaoFormValues
 ): Promise<ResultadoEstoque> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "estoque", "MOVIMENTAR");
+  if (negado) return negado;
   const parse = movimentacaoSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };
@@ -143,6 +151,8 @@ export async function carregarContagemAction(
   contagemId: string
 ): Promise<{ ok: boolean; erro?: string; itens?: ContagemItemDetalhe[] }> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "estoque", "VISUALIZAR");
+  if (negado) return negado;
   const contagem = await contagemService.obterContagem(ctx.db, contagemId);
   if (!contagem) return { ok: false, erro: "Contagem não encontrada." };
   return {
@@ -162,6 +172,8 @@ export async function criarContagemAction(
   valores: ContagemFormValues
 ): Promise<ResultadoEstoque> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "estoque", "MOVIMENTAR");
+  if (negado) return negado;
   const parse = contagemSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };
@@ -191,6 +203,8 @@ export async function salvarContagensAction(
   valores: ContagemItensFormValues
 ): Promise<ResultadoEstoque> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "estoque", "MOVIMENTAR");
+  if (negado) return negado;
   const parse = contagemItensSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };
@@ -208,6 +222,8 @@ export async function concluirContagemAction(
   contagemId: string
 ): Promise<ResultadoEstoque & { ajustes?: number }> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "estoque", "MOVIMENTAR");
+  if (negado) return negado;
   try {
     const resultado = await contagemService.concluirContagem(
       ctx.db,
@@ -233,6 +249,8 @@ export async function cancelarContagemAction(
   contagemId: string
 ): Promise<ResultadoEstoque> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "estoque", "MOVIMENTAR");
+  if (negado) return negado;
   try {
     await contagemService.cancelarContagem(ctx.db, contagemId);
     await registrarAuditoria(ctx, {
@@ -250,6 +268,8 @@ export async function cancelarContagemAction(
 
 export async function criarCategoriaAction(nome: string): Promise<ResultadoEstoque> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "estoque", "CRIAR");
+  if (negado) return negado;
   const parse = categoriaSchema.safeParse({ nome });
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Nome inválido." };

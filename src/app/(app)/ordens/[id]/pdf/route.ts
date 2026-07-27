@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
-import { getSessao } from "@/shared/lib/session";
+import { getSessao, temPermissaoDireta } from "@/shared/lib/session";
 import { tenantDb } from "@/shared/lib/tenant-db";
 import { prisma } from "@/shared/lib/prisma";
 import { obterOS } from "@/modules/ordens/services/os-service";
@@ -16,6 +16,16 @@ export async function GET(
   const oficinaId = sessao?.session.activeOrganizationId;
   if (!oficinaId) {
     return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
+  }
+  // O PDF é o orçamento completo (contém valores) — exige ENVIAR_APROVACAO.
+  const autorizado = await temPermissaoDireta(
+    oficinaId,
+    sessao.user.id,
+    "ordens",
+    "ENVIAR_APROVACAO"
+  );
+  if (!autorizado) {
+    return NextResponse.json({ erro: "Sem permissão." }, { status: 403 });
   }
 
   const { id } = await params;

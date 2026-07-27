@@ -10,7 +10,7 @@ import {
   Wallet,
 } from "lucide-react";
 import type { StatusLancamento, TipoLancamento } from "@prisma/client";
-import { requireOficina } from "@/shared/lib/session";
+import { requireOficina, requirePermissaoPage } from "@/shared/lib/session";
 import { prisma } from "@/shared/lib/prisma";
 import {
   listarComissoes,
@@ -47,7 +47,9 @@ interface Props {
 }
 
 async function ConteudoFinanceiro({ searchParams }: Props) {
-  const { db } = await requireOficina();
+  const ctx = await requireOficina();
+  await requirePermissaoPage(ctx, "financeiro");
+  const { db } = ctx;
   const params = await searchParams;
   const pagina = Math.max(1, Number(params.pagina) || 1);
   const tipo = ["RECEITA", "DESPESA"].includes(params.tipo ?? "")

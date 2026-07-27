@@ -10,7 +10,7 @@ import {
   Gauge,
   User,
 } from "lucide-react";
-import { requireOficina } from "@/shared/lib/session";
+import { requireOficina, requirePermissaoPage } from "@/shared/lib/session";
 import {
   obterVeiculo,
   listarClientesParaSelecao,
@@ -41,7 +41,9 @@ export default async function VeiculoDetalhePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { db } = await requireOficina();
+  const ctx = await requireOficina();
+  await requirePermissaoPage(ctx, "veiculos");
+  const { db } = ctx;
   const { id } = await params;
   const [veiculo, clientesSelecao] = await Promise.all([
     obterVeiculo(db, id),

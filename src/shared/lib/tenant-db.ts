@@ -52,6 +52,8 @@ const TENANT_MODELS = new Set([
   "ChecklistOS",
   "TemplateServico",
   "TemplateServicoItem",
+  "PerfilAcesso",
+  "PermissaoPerfil",
 ]);
 
 const SOFT_DELETE_MODELS = new Set([
@@ -81,6 +83,7 @@ const SOFT_DELETE_MODELS = new Set([
   "ChecklistOS",
   "TemplateServico",
   "TemplateServicoItem",
+  "PerfilAcesso",
 ]);
 
 const READ_OPS = new Set([

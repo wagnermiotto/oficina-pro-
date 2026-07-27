@@ -1,12 +1,22 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { format } from "date-fns";
-import { requireOficina } from "@/shared/lib/session";
+import {
+  requireOficina,
+  requirePermissaoPage,
+  temPermissao,
+} from "@/shared/lib/session";
 import { prisma } from "@/shared/lib/prisma";
 import { paraNumero } from "@/shared/utils/moeda";
 import { ConfigForm } from "@/modules/configuracoes/components/config-form";
 import { TemplatesSection } from "@/modules/ordens/components/templates-section";
 import { listarTemplates } from "@/modules/ordens/services/template-service";
+import { PermissoesSection } from "@/modules/permissoes/components/permissoes-section";
+import { listarPerfis } from "@/modules/permissoes/services/permissoes-service";
+import {
+  MODULOS_RESERVADOS,
+  MODULOS_SISTEMA,
+} from "@/shared/permissoes/catalogo";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -27,7 +37,30 @@ import {
 export const metadata: Metadata = { title: "Configurações" };
 
 async function ConteudoConfiguracoes() {
-  const { db, oficinaId } = await requireOficina();
+  const ctx = await requireOficina();
+  await requirePermissaoPage(ctx, "configuracoes");
+  const { db, oficinaId } = ctx;
+  // A trilha de auditoria é assunto de governança (mesmo gate de permissões).
+  const [verAuditoria, verPermissoes, editarPermissoes] = await Promise.all([
+    temPermissao(ctx, "permissoes", "VISUALIZAR"),
+    temPermissao(ctx, "permissoes", "VISUALIZAR"),
+    temPermissao(ctx, "permissoes", "EDITAR"),
+  ]);
+  const perfis = verPermissoes ? await listarPerfis(db) : [];
+  const catalogoPermissoes = [
+    ...Object.entries(MODULOS_SISTEMA).map(([id, def]) => ({
+      id,
+      rotulo: def.rotulo,
+      acoes: [...def.acoes],
+      reservado: false,
+    })),
+    ...Object.entries(MODULOS_RESERVADOS).map(([id, def]) => ({
+      id,
+      rotulo: def.rotulo,
+      acoes: [...def.acoes],
+      reservado: true,
+    })),
+  ];
 
   const [oficina, config, auditoria, templates] = await Promise.all([
     prisma.organization.findUnique({
@@ -66,7 +99,12 @@ async function ConteudoConfiguracoes() {
       <TabsList>
         <TabsTrigger value="dados">Dados da oficina</TabsTrigger>
         <TabsTrigger value="pacotes">Pacotes de serviço</TabsTrigger>
-        <TabsTrigger value="auditoria">Auditoria</TabsTrigger>
+        {verPermissoes ? (
+          <TabsTrigger value="permissoes">Permissões</TabsTrigger>
+        ) : null}
+        {verAuditoria ? (
+          <TabsTrigger value="auditoria">Auditoria</TabsTrigger>
+        ) : null}
       </TabsList>
 
       <TabsContent value="dados" className="pt-3">
@@ -107,6 +145,17 @@ async function ConteudoConfiguracoes() {
         />
       </TabsContent>
 
+      {verPermissoes ? (
+        <TabsContent value="permissoes" className="pt-3">
+          <PermissoesSection
+            perfis={perfis}
+            catalogo={catalogoPermissoes}
+            podeEditar={editarPermissoes}
+          />
+        </TabsContent>
+      ) : null}
+
+      {verAuditoria ? (
       <TabsContent value="auditoria" className="pt-3">
         <div className="overflow-hidden rounded-lg border">
           <Table>
@@ -158,6 +207,7 @@ async function ConteudoConfiguracoes() {
           </Table>
         </div>
       </TabsContent>
+      ) : null}
     </Tabs>
   );
 }

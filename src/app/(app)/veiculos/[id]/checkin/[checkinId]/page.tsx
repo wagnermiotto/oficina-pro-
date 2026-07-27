@@ -4,7 +4,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
 import { ArrowLeft, Check, X } from "lucide-react";
-import { requireOficina } from "@/shared/lib/session";
+import { requireOficina, requirePermissaoPage } from "@/shared/lib/session";
 import {
   NIVEL_COMBUSTIVEL_LABEL,
   TIPO_AVARIA_LABEL,
@@ -26,7 +26,9 @@ export default async function CheckInDetalhePage({
 }: {
   params: Promise<{ id: string; checkinId: string }>;
 }) {
-  const { db } = await requireOficina();
+  const ctx = await requireOficina();
+  await requirePermissaoPage(ctx, "ordens");
+  const { db } = ctx;
   const { id, checkinId } = await params;
 
   const checkIn = await db.checkIn.findUnique({

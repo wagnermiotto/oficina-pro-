@@ -1,5 +1,6 @@
-import { requireOficina } from "@/shared/lib/session";
+import { getPermissoes, isSuperAdmin, requireOficina } from "@/shared/lib/session";
 import { obterNomeOficina } from "@/shared/lib/oficina-cache";
+import { MODULOS_SISTEMA, chave } from "@/shared/permissoes/catalogo";
 import {
   SidebarInset,
   SidebarProvider,
@@ -13,13 +14,23 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const ctx = await requireOficina();
-  const nomeOficina = await obterNomeOficina(ctx.oficinaId);
+  const [nomeOficina, permissoes, superAdmin] = await Promise.all([
+    obterNomeOficina(ctx.oficinaId),
+    getPermissoes(ctx),
+    isSuperAdmin(ctx.usuario.id),
+  ]);
+  const modulosVisiveis = superAdmin
+    ? Object.keys(MODULOS_SISTEMA)
+    : Object.keys(MODULOS_SISTEMA).filter((modulo) =>
+        permissoes.chaves.has(chave(modulo, "VISUALIZAR"))
+      );
 
   return (
     <SidebarProvider>
       <AppSidebar
         nomeOficina={nomeOficina}
         usuario={{ nome: ctx.usuario.nome, email: ctx.usuario.email }}
+        modulosVisiveis={modulosVisiveis}
       />
       <SidebarInset>
         <AppHeader />

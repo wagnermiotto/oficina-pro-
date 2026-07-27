@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import type { StatusOS } from "@prisma/client";
-import { requireOficina } from "@/shared/lib/session";
+import {
+  escopoOrdens,
+  guardPermissao,
+  requireOficina,
+  type ContextoOficina,
+} from "@/shared/lib/session";
 import { registrarAuditoria } from "@/shared/lib/audit";
 import {
   ajusteOSSchema,
@@ -38,10 +43,33 @@ function mensagemDe(erro: unknown): string {
   return erro instanceof Error ? erro.message : "Operação falhou.";
 }
 
+/**
+ * Escopo "minhas OS": quem só tem ordens.VISUALIZAR (sem VISUALIZAR_TODAS)
+ * opera apenas nas OS atribuídas a ele (mecanicoId).
+ */
+async function guardEscopoOS(
+  ctx: ContextoOficina,
+  osId: string
+): Promise<{ ok: false; erro: string } | null> {
+  const escopo = await escopoOrdens(ctx);
+  if (escopo === "TODAS") return null;
+  if (escopo === "PROPRIAS") {
+    const os = await ctx.db.ordemServico.findUnique({
+      where: { id: osId },
+      select: { mecanicoId: true },
+    });
+    if (os && os.mecanicoId === ctx.usuario.id) return null;
+    return { ok: false, erro: "Esta OS não está atribuída a você." };
+  }
+  return { ok: false, erro: "Você não tem acesso às ordens de serviço." };
+}
+
 export async function criarOSAction(
   valores: NovaOSFormValues
 ): Promise<ResultadoOS> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "ordens", "CRIAR");
+  if (negado) return negado;
   const parse = novaOSSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };
@@ -72,6 +100,10 @@ export async function mudarStatusOSAction(
   observacao?: string
 ): Promise<ResultadoOS> {
   const ctx = await requireOficina();
+  const negado =
+    (await guardPermissao(ctx, "ordens", "MUDAR_STATUS")) ??
+    (await guardEscopoOS(ctx, osId));
+  if (negado) return negado;
   try {
     await osService.mudarStatus(
       ctx.db,
@@ -99,6 +131,8 @@ export async function mudarStatusOSAction(
 
 export async function gerarLinkPortalAction(osId: string): Promise<ResultadoOS> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "ordens", "ENVIAR_APROVACAO");
+  if (negado) return negado;
   try {
     const token = await gerarPortalToken(ctx.db, osId);
     const base = process.env.NEXT_PUBLIC_APP_URL ?? "";
@@ -112,6 +146,10 @@ export async function gerarLinkPortalAction(osId: string): Promise<ResultadoOS> 
 
 export async function iniciarChecklistAction(osId: string): Promise<ResultadoOS> {
   const ctx = await requireOficina();
+  const negado =
+    (await guardPermissao(ctx, "ordens", "EDITAR")) ??
+    (await guardEscopoOS(ctx, osId));
+  if (negado) return negado;
   try {
     await criarChecklist(ctx.db, ctx.oficinaId, osId);
     revalidatePath(`/ordens/${osId}`);
@@ -128,6 +166,10 @@ export async function atualizarChecklistAction(
   observacao?: string
 ): Promise<ResultadoOS> {
   const ctx = await requireOficina();
+  const negado =
+    (await guardPermissao(ctx, "ordens", "EDITAR")) ??
+    (await guardEscopoOS(ctx, osId));
+  if (negado) return negado;
   try {
     await atualizarItemChecklist(ctx.db, itemId, status, observacao);
     revalidatePath(`/ordens/${osId}`);
@@ -144,6 +186,10 @@ export async function aplicarTemplateOSAction(
   templateId: string
 ): Promise<ResultadoOS> {
   const ctx = await requireOficina();
+  const negado =
+    (await guardPermissao(ctx, "ordens", "EDITAR")) ??
+    (await guardEscopoOS(ctx, osId));
+  if (negado) return negado;
   try {
     const qtd = await aplicarTemplateNaOS(ctx.db, ctx.oficinaId, osId, templateId);
     await osService.recalcularTotais(ctx.db, osId);
@@ -159,6 +205,10 @@ export async function adicionarServicoOSAction(
   valores: ItemServicoFormValues
 ): Promise<ResultadoOS> {
   const ctx = await requireOficina();
+  const negado =
+    (await guardPermissao(ctx, "ordens", "EDITAR")) ??
+    (await guardEscopoOS(ctx, osId));
+  if (negado) return negado;
   const parse = itemServicoSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };
@@ -192,6 +242,10 @@ export async function removerServicoOSAction(
   itemId: string
 ): Promise<ResultadoOS> {
   const ctx = await requireOficina();
+  const negado =
+    (await guardPermissao(ctx, "ordens", "EDITAR")) ??
+    (await guardEscopoOS(ctx, osId));
+  if (negado) return negado;
   try {
     await ctx.db.oSServico.update({
       where: { id: itemId },
@@ -210,6 +264,10 @@ export async function adicionarPecaOSAction(
   valores: ItemPecaFormValues
 ): Promise<ResultadoOS> {
   const ctx = await requireOficina();
+  const negado =
+    (await guardPermissao(ctx, "ordens", "EDITAR")) ??
+    (await guardEscopoOS(ctx, osId));
+  if (negado) return negado;
   const parse = itemPecaSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };
@@ -256,6 +314,10 @@ export async function removerPecaOSAction(
   itemId: string
 ): Promise<ResultadoOS> {
   const ctx = await requireOficina();
+  const negado =
+    (await guardPermissao(ctx, "ordens", "EDITAR")) ??
+    (await guardEscopoOS(ctx, osId));
+  if (negado) return negado;
   try {
     const item = await ctx.db.oSPeca.findUnique({ where: { id: itemId } });
     if (!item) return { ok: false, erro: "Item não encontrado." };
@@ -282,6 +344,10 @@ export async function adicionarDiagnosticoOSAction(
   valores: ItemDiagnosticoFormValues
 ): Promise<ResultadoOS> {
   const ctx = await requireOficina();
+  const negado =
+    (await guardPermissao(ctx, "ordens", "EDITAR")) ??
+    (await guardEscopoOS(ctx, osId));
+  if (negado) return negado;
   const parse = itemDiagnosticoSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };
@@ -315,6 +381,10 @@ export async function removerDiagnosticoOSAction(
   itemId: string
 ): Promise<ResultadoOS> {
   const ctx = await requireOficina();
+  const negado =
+    (await guardPermissao(ctx, "ordens", "EDITAR")) ??
+    (await guardEscopoOS(ctx, osId));
+  if (negado) return negado;
   try {
     await ctx.db.diagnosticoItem.update({
       where: { id: itemId },
@@ -332,6 +402,10 @@ export async function ajustarOSAction(
   valores: AjusteOSFormValues
 ): Promise<ResultadoOS> {
   const ctx = await requireOficina();
+  const negado =
+    (await guardPermissao(ctx, "ordens", "EDITAR", "VER_VALORES")) ??
+    (await guardEscopoOS(ctx, osId));
+  if (negado) return negado;
   const parse = ajusteOSSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };
@@ -356,6 +430,8 @@ export async function ajustarOSAction(
 
 export async function gerarLinkAprovacaoAction(osId: string): Promise<ResultadoOS> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "ordens", "ENVIAR_APROVACAO");
+  if (negado) return negado;
   try {
     const aprovacao = await criarAprovacao(ctx.db, ctx.oficinaId, osId);
     const os = await ctx.db.ordemServico.findUnique({

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { FileSpreadsheet } from "lucide-react";
-import { requireOficina } from "@/shared/lib/session";
+import { requireOficina, requirePermissaoPage } from "@/shared/lib/session";
 import { obterResumoBI } from "@/modules/relatorios/services/bi-service";
 import { BIConteudo } from "@/modules/relatorios/components/bi-charts";
 import { RelatorioCard } from "@/modules/relatorios/components/relatorio-card";
@@ -17,7 +17,9 @@ import {
 export const metadata: Metadata = { title: "Relatórios e BI" };
 
 async function BISecao() {
-  const { db } = await requireOficina();
+  const ctx = await requireOficina();
+  await requirePermissaoPage(ctx, "relatorios");
+  const { db } = ctx;
   const resumo = await obterResumoBI(db);
   return <BIConteudo resumo={resumo} />;
 }

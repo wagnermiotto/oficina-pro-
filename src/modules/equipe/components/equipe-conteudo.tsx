@@ -56,6 +56,8 @@ export interface MembroLinha {
   nome: string;
   email: string;
   cargo: Cargo | null;
+  perfilAcessoId: string | null;
+  perfilNome: string | null;
   especialidade: string | null;
   comissaoPercent: number;
   salario: number | null;
@@ -65,12 +67,19 @@ export interface MembroLinha {
   receitaGerada: number;
 }
 
+export interface PerfilAcessoOpcao {
+  id: string;
+  nome: string;
+}
+
 function PerfilDialog({
   membro,
+  perfisAcesso,
   aberto,
   onFechar,
 }: {
   membro: MembroLinha | null;
+  perfisAcesso: PerfilAcessoOpcao[];
   aberto: boolean;
   onFechar: () => void;
 }) {
@@ -78,6 +87,7 @@ function PerfilDialog({
   const [salvando, setSalvando] = useState(false);
   const [valores, setValores] = useState<PerfilFormValues>({
     cargo: membro?.cargo ?? "MECANICO",
+    perfilAcessoId: membro?.perfilAcessoId ?? null,
     especialidade: membro?.especialidade ?? "",
     comissaoPercent: membro ? String(membro.comissaoPercent) : "",
     salario: membro?.salario != null ? String(membro.salario) : "",
@@ -108,9 +118,36 @@ function PerfilDialog({
           <DialogTitle>Perfil de {membro.nome}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>Perfil de acesso</Label>
+            <Select
+              value={valores.perfilAcessoId ?? "nenhum"}
+              onValueChange={(v) =>
+                setValores((a) => ({
+                  ...a,
+                  perfilAcessoId: v === "nenhum" ? null : v,
+                }))
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecione o perfil" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="nenhum">Sem acesso (bloqueado)</SelectItem>
+                {perfisAcesso.map((perfil) => (
+                  <SelectItem key={perfil.id} value={perfil.id}>
+                    {perfil.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Define o que este membro vê e faz no sistema (menus, telas e ações).
+            </p>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Cargo</Label>
+              <Label>Função</Label>
               <Select
                 value={valores.cargo}
                 onValueChange={(v) =>
@@ -197,7 +234,13 @@ function PerfilDialog({
   );
 }
 
-export function EquipeConteudo({ membros }: { membros: MembroLinha[] }) {
+export function EquipeConteudo({
+  membros,
+  perfisAcesso,
+}: {
+  membros: MembroLinha[];
+  perfisAcesso: PerfilAcessoOpcao[];
+}) {
   const [editando, setEditando] = useState<MembroLinha | null>(null);
 
   return (
@@ -218,7 +261,7 @@ export function EquipeConteudo({ membros }: { membros: MembroLinha[] }) {
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead>Membro</TableHead>
-              <TableHead>Cargo</TableHead>
+              <TableHead>Perfil de acesso</TableHead>
               <TableHead className="text-right">Comissão</TableHead>
               <TableHead className="text-right">OS finalizadas</TableHead>
               <TableHead className="text-right">Receita gerada</TableHead>
@@ -257,8 +300,12 @@ export function EquipeConteudo({ membros }: { membros: MembroLinha[] }) {
                   </div>
                 </TableCell>
                 <TableCell>
-                  {membro.cargo ? (
-                    <Badge variant="secondary">{CARGO_LABEL[membro.cargo]}</Badge>
+                  {membro.perfilNome ? (
+                    <Badge variant="secondary">{membro.perfilNome}</Badge>
+                  ) : membro.cargo ? (
+                    <Badge variant="outline" className="text-muted-foreground">
+                      {CARGO_LABEL[membro.cargo]} (sem acesso)
+                    </Badge>
                   ) : (
                     <Badge variant="outline" className="text-muted-foreground">
                       Sem perfil
@@ -291,6 +338,7 @@ export function EquipeConteudo({ membros }: { membros: MembroLinha[] }) {
       <PerfilDialog
         key={editando?.userId ?? "nenhum"}
         membro={editando}
+        perfisAcesso={perfisAcesso}
         aberto={Boolean(editando)}
         onFechar={() => setEditando(null)}
       />

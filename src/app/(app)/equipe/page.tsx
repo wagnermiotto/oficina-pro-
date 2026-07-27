@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { requireOficina } from "@/shared/lib/session";
+import { requireOficina, requirePermissaoPage } from "@/shared/lib/session";
 import { prisma } from "@/shared/lib/prisma";
 import { paraNumero } from "@/shared/utils/moeda";
 import {
@@ -12,18 +12,27 @@ import { Skeleton } from "@/components/ui/skeleton";
 export const metadata: Metadata = { title: "Equipe" };
 
 async function ConteudoEquipe() {
-  const { db, oficinaId } = await requireOficina();
+  const ctx = await requireOficina();
+  await requirePermissaoPage(ctx, "equipe");
+  const { db, oficinaId } = ctx;
 
-  const [membros, perfis, osFinalizadas] = await Promise.all([
+  const [membros, perfis, osFinalizadas, perfisAcesso] = await Promise.all([
     prisma.member.findMany({
       where: { organizationId: oficinaId },
       include: { user: { select: { id: true, name: true, email: true } } },
       orderBy: { createdAt: "asc" },
     }),
-    db.funcionarioPerfil.findMany(),
+    db.funcionarioPerfil.findMany({
+      include: { perfilAcesso: { select: { id: true, nome: true } } },
+    }),
     db.ordemServico.findMany({
       where: { status: { in: ["FINALIZADO", "ENTREGUE"] }, mecanicoId: { not: null } },
       select: { mecanicoId: true, total: true },
+    }),
+    db.perfilAcesso.findMany({
+      where: { ativo: true },
+      orderBy: [{ sistema: "desc" }, { nome: "asc" }],
+      select: { id: true, nome: true },
     }),
   ]);
 
@@ -44,6 +53,8 @@ async function ConteudoEquipe() {
       nome: membro.user.name,
       email: membro.user.email,
       cargo: perfil?.cargo ?? null,
+      perfilAcessoId: perfil?.perfilAcessoId ?? null,
+      perfilNome: perfil?.perfilAcesso?.nome ?? null,
       especialidade: perfil?.especialidade ?? null,
       comissaoPercent: paraNumero(perfil?.comissaoPercent),
       salario: perfil?.salario != null ? paraNumero(perfil.salario) : null,
@@ -54,7 +65,7 @@ async function ConteudoEquipe() {
     };
   });
 
-  return <EquipeConteudo membros={linhas} />;
+  return <EquipeConteudo membros={linhas} perfisAcesso={perfisAcesso} />;
 }
 
 export default function EquipePage() {

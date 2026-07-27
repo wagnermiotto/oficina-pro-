@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireOficina } from "@/shared/lib/session";
+import { guardPermissao, requireOficina } from "@/shared/lib/session";
 import { registrarAuditoria } from "@/shared/lib/audit";
 import {
   interacaoSchema,
@@ -21,6 +21,8 @@ export async function gerarLinkNpsAction(
   osId: string
 ): Promise<{ ok: boolean; erro?: string; url?: string }> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "crm", "CRIAR");
+  if (negado) return negado;
   try {
     const pesquisa = await criarPesquisaNps(ctx.db, ctx.oficinaId, osId);
     await registrarAuditoria(ctx, {
@@ -42,6 +44,8 @@ export async function criarInteracaoAction(
   valores: InteracaoFormValues
 ): Promise<ResultadoCRM> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "crm", "CRIAR");
+  if (negado) return negado;
   const parse = interacaoSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };
@@ -71,6 +75,8 @@ export async function criarInteracaoAction(
 
 export async function concluirLembreteAction(id: string): Promise<ResultadoCRM> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "crm", "EDITAR");
+  if (negado) return negado;
   try {
     await service.concluirLembrete(ctx.db, id);
     revalidatePath("/crm");

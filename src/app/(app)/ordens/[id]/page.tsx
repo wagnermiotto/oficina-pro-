@@ -10,7 +10,12 @@ import {
   History,
   User,
 } from "lucide-react";
-import { requireOficina } from "@/shared/lib/session";
+import {
+  escopoOrdens,
+  requireOficina,
+  requirePermissaoPage,
+  temPermissao,
+} from "@/shared/lib/session";
 import { iaDisponivel } from "@/shared/lib/ai";
 import { planoPermite } from "@/modules/plataforma/services/plano-service";
 import { gerarPixCopiaECola } from "@/shared/utils/pix";
@@ -46,7 +51,15 @@ export default async function OSDetalhePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { db, oficinaId } = await requireOficina();
+  const ctx = await requireOficina();
+  await requirePermissaoPage(ctx, "ordens");
+  const { db, oficinaId } = ctx;
+  const [escopo, verValores, podeEnviar, podeMudarStatus] = await Promise.all([
+    escopoOrdens(ctx),
+    temPermissao(ctx, "ordens", "VER_VALORES"),
+    temPermissao(ctx, "ordens", "ENVIAR_APROVACAO"),
+    temPermissao(ctx, "ordens", "MUDAR_STATUS"),
+  ]);
   const { id } = await params;
   const [os, mecanicos, catalogoServicos, catalogoPecas, config, checklist, templates] =
     await Promise.all([
@@ -75,6 +88,8 @@ export default async function OSDetalhePage({
     listarTemplates(db),
   ]);
   if (!os) notFound();
+  // Escopo "minhas OS": OS de outro mecânico não existe para este usuário.
+  if (escopo === "PROPRIAS" && os.mecanicoId !== ctx.usuario.id) notFound();
 
   const editavel = !STATUS_NAO_EDITAVEIS.has(os.status);
   const iaLiberada = iaDisponivel() && (await planoPermite(oficinaId, "ia_enabled"));
@@ -126,7 +141,12 @@ export default async function OSDetalhePage({
               templates={templates.map((t) => ({ id: t.id, nome: t.nome, itens: t.itens.length }))}
             />
           ) : null}
-          <OSStatusAcoes osId={os.id} status={os.status} />
+          <OSStatusAcoes
+            osId={os.id}
+            status={os.status}
+            podeEnviar={podeEnviar}
+            podeMudarStatus={podeMudarStatus}
+          />
         </div>
       </div>
 
@@ -229,20 +249,24 @@ export default async function OSDetalhePage({
         />
 
         <div className="space-y-4">
-          <OSAjustesCard
-            osId={os.id}
-            editavel={editavel}
-            mecanicos={mecanicos.map((m) => ({ userId: m.userId, nome: m.nome }))}
-            mecanicoId={os.mecanicoId}
-            descontoValor={paraNumero(os.descontoValor)}
-            impostoPercent={paraNumero(os.impostoPercent)}
-            observacoesInternas={os.observacoesInternas}
-            totalServicos={paraNumero(os.totalServicos)}
-            totalPecas={paraNumero(os.totalPecas)}
-            total={paraNumero(os.total)}
-          />
+          {verValores ? (
+            <OSAjustesCard
+              osId={os.id}
+              editavel={editavel}
+              mecanicos={mecanicos.map((m) => ({ userId: m.userId, nome: m.nome }))}
+              mecanicoId={os.mecanicoId}
+              descontoValor={paraNumero(os.descontoValor)}
+              impostoPercent={paraNumero(os.impostoPercent)}
+              observacoesInternas={os.observacoesInternas}
+              totalServicos={paraNumero(os.totalServicos)}
+              totalPecas={paraNumero(os.totalPecas)}
+              total={paraNumero(os.total)}
+            />
+          ) : null}
 
-          {pixCodigo ? <PixCard codigo={pixCodigo} valor={totalOS} /> : null}
+          {verValores && pixCodigo ? (
+            <PixCard codigo={pixCodigo} valor={totalOS} />
+          ) : null}
 
           <ChecklistCard
             osId={os.id}

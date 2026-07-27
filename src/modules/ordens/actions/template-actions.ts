@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireOficina } from "@/shared/lib/session";
+import { guardPermissao, requireOficina } from "@/shared/lib/session";
 import * as service from "../services/template-service";
 
 const itemSchema = z.object({
@@ -37,6 +37,8 @@ export async function criarTemplateAction(
   valores: TemplateFormValues
 ): Promise<ResultadoTemplate> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "configuracoes", "EDITAR");
+  if (negado) return negado;
   const parse = templateSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };
@@ -57,6 +59,8 @@ export async function criarTemplateAction(
 
 export async function excluirTemplateAction(id: string): Promise<ResultadoTemplate> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "configuracoes", "EDITAR");
+  if (negado) return negado;
   try {
     await service.excluirTemplate(ctx.db, id);
     revalidatePath("/configuracoes");

@@ -45,31 +45,33 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 const GRUPOS_NAV = [
   {
     titulo: "Visão geral",
-    itens: [{ titulo: "Dashboard", href: "/dashboard", icone: LayoutDashboard }],
+    itens: [
+      { titulo: "Dashboard", href: "/dashboard", icone: LayoutDashboard, modulo: "dashboard" },
+    ],
   },
   {
     titulo: "Operação",
     itens: [
-      { titulo: "Ordens de Serviço", href: "/ordens", icone: Wrench },
-      { titulo: "Agenda", href: "/agenda", icone: Calendar },
-      { titulo: "Clientes", href: "/clientes", icone: Users },
-      { titulo: "Veículos", href: "/veiculos", icone: Car },
+      { titulo: "Ordens de Serviço", href: "/ordens", icone: Wrench, modulo: "ordens" },
+      { titulo: "Agenda", href: "/agenda", icone: Calendar, modulo: "agenda" },
+      { titulo: "Clientes", href: "/clientes", icone: Users, modulo: "clientes" },
+      { titulo: "Veículos", href: "/veiculos", icone: Car, modulo: "veiculos" },
     ],
   },
   {
     titulo: "Suprimentos",
     itens: [
-      { titulo: "Estoque", href: "/estoque", icone: Package },
-      { titulo: "Compras", href: "/compras", icone: ShoppingCart },
+      { titulo: "Estoque", href: "/estoque", icone: Package, modulo: "estoque" },
+      { titulo: "Compras", href: "/compras", icone: ShoppingCart, modulo: "compras" },
     ],
   },
   {
     titulo: "Gestão",
     itens: [
-      { titulo: "Financeiro", href: "/financeiro", icone: Wallet },
-      { titulo: "Relatórios", href: "/relatorios", icone: BarChart3 },
-      { titulo: "CRM", href: "/crm", icone: HeartHandshake },
-      { titulo: "Equipe", href: "/equipe", icone: UserCog },
+      { titulo: "Financeiro", href: "/financeiro", icone: Wallet, modulo: "financeiro" },
+      { titulo: "Relatórios", href: "/relatorios", icone: BarChart3, modulo: "relatorios" },
+      { titulo: "CRM", href: "/crm", icone: HeartHandshake, modulo: "crm" },
+      { titulo: "Equipe", href: "/equipe", icone: UserCog, modulo: "equipe" },
     ],
   },
 ];
@@ -77,9 +79,17 @@ const GRUPOS_NAV = [
 interface AppSidebarProps {
   nomeOficina: string;
   usuario: { nome: string; email: string };
+  /** Módulos com VISUALIZAR no perfil do usuário (RBAC). Filtra o menu — UX;
+   * a segurança real está nos gates de página e nas Server Actions. */
+  modulosVisiveis: string[];
 }
 
-export function AppSidebar({ nomeOficina, usuario }: AppSidebarProps) {
+export function AppSidebar({ nomeOficina, usuario, modulosVisiveis }: AppSidebarProps) {
+  const visiveis = new Set(modulosVisiveis);
+  const grupos = GRUPOS_NAV.map((grupo) => ({
+    ...grupo,
+    itens: grupo.itens.filter((item) => visiveis.has(item.modulo)),
+  })).filter((grupo) => grupo.itens.length > 0);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -119,7 +129,7 @@ export function AppSidebar({ nomeOficina, usuario }: AppSidebarProps) {
       </SidebarHeader>
 
       <SidebarContent>
-        {GRUPOS_NAV.map((grupo) => (
+        {grupos.map((grupo) => (
           <SidebarGroup key={grupo.titulo}>
             <SidebarGroupLabel>{grupo.titulo}</SidebarGroupLabel>
             <SidebarGroupContent>
@@ -146,18 +156,20 @@ export function AppSidebar({ nomeOficina, usuario }: AppSidebarProps) {
 
       <SidebarFooter>
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={pathname.startsWith("/configuracoes")}
-              tooltip="Configurações"
-            >
-              <Link href="/configuracoes">
-                <Settings />
-                <span>Configurações</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {visiveis.has("configuracoes") ? (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname.startsWith("/configuracoes")}
+                tooltip="Configurações"
+              >
+                <Link href="/configuracoes">
+                  <Settings />
+                  <span>Configurações</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ) : null}
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

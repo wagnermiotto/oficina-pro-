@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { StatusAgendamento } from "@prisma/client";
-import { requireOficina } from "@/shared/lib/session";
+import { guardPermissao, requireOficina } from "@/shared/lib/session";
 import { registrarAuditoria } from "@/shared/lib/audit";
 import {
   agendamentoSchema,
@@ -20,6 +20,8 @@ export async function criarAgendamentoAction(
   valores: AgendamentoFormValues
 ): Promise<ResultadoAgenda> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "agenda", "CRIAR");
+  if (negado) return negado;
   const parse = agendamentoSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };
@@ -52,6 +54,8 @@ export async function mudarStatusAgendamentoAction(
   novoStatus: StatusAgendamento
 ): Promise<ResultadoAgenda> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "agenda", "EDITAR");
+  if (negado) return negado;
   try {
     await service.mudarStatusAgendamento(ctx.db, id, novoStatus);
     revalidatePath("/agenda");
@@ -67,6 +71,8 @@ export async function mudarStatusAgendamentoAction(
 
 export async function excluirAgendamentoAction(id: string): Promise<ResultadoAgenda> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "agenda", "EXCLUIR");
+  if (negado) return negado;
   try {
     await service.excluirAgendamento(ctx.db, id);
     await registrarAuditoria(ctx, {

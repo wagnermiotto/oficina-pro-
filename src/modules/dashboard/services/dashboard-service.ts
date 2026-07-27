@@ -15,9 +15,13 @@ import { formatarPlaca } from "@/shared/utils/placa";
 import { STATUS_OS_ATIVOS } from "@/shared/constants/os";
 import type { PontoFluxo, ResumoDashboard } from "../types";
 
-/** Agrega todos os indicadores exibidos no dashboard num único round-trip. */
+/**
+ * Agrega todos os indicadores exibidos no dashboard num único round-trip.
+ * `mecanicoId` (escopo "minhas OS" do RBAC) restringe a lista de OS recentes.
+ */
 export async function obterResumoDashboard(
-  db: TenantDb
+  db: TenantDb,
+  opcoes: { mecanicoId?: string } = {}
 ): Promise<ResumoDashboard> {
   const agora = new Date();
   const inicioHoje = startOfDay(agora);
@@ -91,6 +95,7 @@ export async function obterResumoDashboard(
       select: { tipo: true, valor: true, pagoEm: true },
     }),
     db.ordemServico.findMany({
+      where: opcoes.mecanicoId ? { mecanicoId: opcoes.mecanicoId } : undefined,
       orderBy: { createdAt: "desc" },
       take: 8,
       include: {

@@ -2,10 +2,11 @@ import "server-only";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
-import type { Cargo } from "@prisma/client";
 import { auth } from "./auth";
 import { prisma } from "./prisma";
 import { tenantDb, type TenantDb } from "./tenant-db";
+import { normalizarChaves } from "@/modules/permissoes/services/permissoes-service";
+import { chave, type ChavePermissao, type Modulo } from "@/shared/permissoes/catalogo";
 
 /** Sessão atual (cacheada por request). Null se não autenticado. */
 export const getSessao = cache(async () => {
@@ -124,34 +125,149 @@ export async function requireSuperAdmin(): Promise<ContextoMatriz> {
   };
 }
 
-const cargoCache = cache(async (oficinaId: string, userId: string) => {
-  return prisma.funcionarioPerfil.findFirst({
-    where: { oficinaId, userId, deletedAt: null, ativo: true },
-    select: { cargo: true },
-  });
-});
+// =============================================================================
+// RBAC dinâmico (PerfilAcesso × PermissaoPerfil)
+// =============================================================================
 
-/** Cargo do usuário na oficina ativa (RBAC de domínio). */
-export async function getCargo(ctx: ContextoOficina): Promise<Cargo | null> {
-  const perfil = await cargoCache(ctx.oficinaId, ctx.usuario.id);
-  return perfil?.cargo ?? null;
+export interface PermissoesUsuario {
+  perfilId: string | null;
+  perfilNome: string | null;
+  /** Chave do seed ("PROPRIETARIO", "MECANICO"...) ou null p/ perfil custom. */
+  perfilChave: string | null;
+  /** Chaves normalizadas "modulo.ACAO" (VISUALIZAR_TODAS ⇒ +VISUALIZAR). */
+  chaves: ReadonlySet<ChavePermissao>;
+}
+
+const SEM_PERMISSOES: PermissoesUsuario = {
+  perfilId: null,
+  perfilNome: null,
+  perfilChave: null,
+  chaves: new Set(),
+};
+
+/**
+ * 1 query por request (React cache): funcionário ativo → perfil ativo →
+ * matriz. Fallback = negar tudo (sem perfil, inativo ou soft-deletado).
+ */
+const permissoesCache = cache(
+  async (oficinaId: string, userId: string): Promise<PermissoesUsuario> => {
+    const funcionario = await prisma.funcionarioPerfil.findFirst({
+      where: { oficinaId, userId, deletedAt: null, ativo: true },
+      select: {
+        perfilAcesso: {
+          select: {
+            id: true,
+            nome: true,
+            chave: true,
+            ativo: true,
+            deletedAt: true,
+            permissoes: { select: { modulo: true, acao: true } },
+          },
+        },
+      },
+    });
+    const perfil = funcionario?.perfilAcesso;
+    if (!perfil || !perfil.ativo || perfil.deletedAt) return SEM_PERMISSOES;
+    return {
+      perfilId: perfil.id,
+      perfilNome: perfil.nome,
+      perfilChave: perfil.chave,
+      chaves: normalizarChaves(perfil.permissoes),
+    };
+  }
+);
+
+/** Permissões do usuário na oficina ativa (cacheado por request). */
+export async function getPermissoes(ctx: ContextoOficina): Promise<PermissoesUsuario> {
+  return permissoesCache(ctx.oficinaId, ctx.usuario.id);
+}
+
+/**
+ * O usuário pode (modulo, acao)? Super Admin da plataforma bypassa — checado
+ * apenas no caminho de falha (escape hatch anti-lockout, consistente com o
+ * bypass de assinatura).
+ */
+export async function temPermissao(
+  ctx: ContextoOficina,
+  modulo: Modulo,
+  acao: string
+): Promise<boolean> {
+  return temPermissaoDireta(ctx.oficinaId, ctx.usuario.id, modulo, acao);
+}
+
+/** Variante sem ContextoOficina — para route handlers (PDF, exportações). */
+export async function temPermissaoDireta(
+  oficinaId: string,
+  userId: string,
+  modulo: Modulo,
+  acao: string
+): Promise<boolean> {
+  const permissoes = await permissoesCache(oficinaId, userId);
+  if (permissoes.chaves.has(chave(modulo, acao))) return true;
+  return superAdminCache(userId);
 }
 
 export class PermissaoNegadaError extends Error {
-  constructor(cargosNecessarios: Cargo[]) {
-    super(`Permissão negada. Exige cargo: ${cargosNecessarios.join(" ou ")}.`);
+  constructor(modulo: string, acoes: string[]) {
+    super(
+      `Permissão negada: exige ${acoes.map((a) => `${modulo}.${a}`).join(" e ")}.`
+    );
     this.name = "PermissaoNegadaError";
   }
 }
 
-/** Exige que o usuário tenha um dos cargos informados na oficina ativa. */
-export async function requireCargo(
+/** Exige TODAS as ações informadas no módulo; lança PermissaoNegadaError. */
+export async function requirePermissao(
   ctx: ContextoOficina,
-  ...cargos: Cargo[]
-): Promise<Cargo> {
-  const cargo = await getCargo(ctx);
-  if (!cargo || (cargos.length > 0 && !cargos.includes(cargo))) {
-    throw new PermissaoNegadaError(cargos);
+  modulo: Modulo,
+  ...acoes: string[]
+): Promise<void> {
+  for (const acao of acoes) {
+    if (!(await temPermissao(ctx, modulo, acao))) {
+      throw new PermissaoNegadaError(modulo, acoes);
+    }
   }
-  return cargo;
+}
+
+/**
+ * Guard para Server Actions: retorna o DTO de erro padrão ({ok:false}) em vez
+ * de lançar, ou null quando autorizado. Uso:
+ *   const negado = await guardPermissao(ctx, "financeiro", "CRIAR");
+ *   if (negado) return negado;
+ */
+export async function guardPermissao(
+  ctx: ContextoOficina,
+  modulo: Modulo,
+  ...acoes: string[]
+): Promise<{ ok: false; erro: string } | null> {
+  for (const acao of acoes) {
+    if (!(await temPermissao(ctx, modulo, acao))) {
+      return {
+        ok: false,
+        erro: "Você não tem permissão para esta ação. Fale com o responsável pela oficina.",
+      };
+    }
+  }
+  return null;
+}
+
+/** Gate de página: sem a permissão → redirect p/ /acesso-restrito. */
+export async function requirePermissaoPage(
+  ctx: ContextoOficina,
+  modulo: Modulo,
+  acao: string = "VISUALIZAR"
+): Promise<void> {
+  if (!(await temPermissao(ctx, modulo, acao))) redirect("/acesso-restrito");
+}
+
+/**
+ * Escopo de OS do usuário: "TODAS" (vê tudo), "PROPRIAS" (só as atribuídas a
+ * ele — perfil Mecânico padrão) ou null (sem acesso a ordens).
+ */
+export async function escopoOrdens(
+  ctx: ContextoOficina
+): Promise<"TODAS" | "PROPRIAS" | null> {
+  if (await temPermissao(ctx, "ordens", "VISUALIZAR_TODAS")) return "TODAS";
+  if (await temPermissao(ctx, "ordens", "VISUALIZAR")) return "PROPRIAS";
+  return null;
 }

@@ -29,7 +29,8 @@ export interface OSLinha {
   status: StatusOS;
   dataEntrada: string;
   dataPrevista: string | null;
-  total: number;
+  /** null quando o usuário não tem ordens.VER_VALORES (coluna omitida). */
+  total: number | null;
 }
 
 const colunas: ColumnDef<OSLinha, unknown>[] = [
@@ -83,17 +84,26 @@ const colunas: ColumnDef<OSLinha, unknown>[] = [
     header: () => <span className="block text-right">Total</span>,
     cell: ({ row }) => (
       <span className="block text-right font-mono">
-        {formatarMoeda(row.original.total)}
+        {row.original.total === null ? "—" : formatarMoeda(row.original.total)}
       </span>
     ),
   },
 ];
 
-export function OrdensTable({ dados }: { dados: OSLinha[] }) {
+export function OrdensTable({
+  dados,
+  mostrarTotal = true,
+}: {
+  dados: OSLinha[];
+  mostrarTotal?: boolean;
+}) {
   const router = useRouter();
+  const visiveis = mostrarTotal
+    ? colunas
+    : colunas.filter((c) => ("accessorKey" in c ? c.accessorKey !== "total" : true));
   return (
     <DataTable
-      columns={colunas}
+      columns={visiveis}
       data={dados}
       mensagemVazia="Nenhuma ordem de serviço encontrada."
       onRowClick={(linha) => router.push(`/ordens/${linha.id}`)}

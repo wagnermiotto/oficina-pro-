@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { requireOficina } from "@/shared/lib/session";
+import { requireOficina, requirePermissaoPage } from "@/shared/lib/session";
 import { listarClientes } from "@/modules/clientes/services/clientes-service";
 import { ClientesTable } from "@/modules/clientes/components/clientes-table";
 import { ClienteDialog } from "@/modules/clientes/components/cliente-dialog";
@@ -15,7 +15,9 @@ interface Props {
 }
 
 async function ListaClientes({ searchParams }: Props) {
-  const { db } = await requireOficina();
+  const ctx = await requireOficina();
+  await requirePermissaoPage(ctx, "clientes");
+  const { db } = ctx;
   const params = await searchParams;
   const pagina = Math.max(1, Number(params.pagina) || 1);
   const { itens, total, totalPaginas } = await listarClientes(db, {

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireOficina, requireCargo } from "@/shared/lib/session";
+import { guardPermissao, requireOficina } from "@/shared/lib/session";
 import { registrarAuditoria } from "@/shared/lib/audit";
 import { prisma } from "@/shared/lib/prisma";
 import { invalidarNomeOficina } from "@/shared/lib/oficina-cache";
@@ -70,11 +70,8 @@ export async function salvarConfigAction(
   valores: ConfigFormValues
 ): Promise<ResultadoConfig> {
   const ctx = await requireOficina();
-  try {
-    await requireCargo(ctx, "ADMIN", "GERENTE");
-  } catch {
-    return { ok: false, erro: "Apenas administradores e gerentes alteram configurações." };
-  }
+  const negado = await guardPermissao(ctx, "configuracoes", "EDITAR");
+  if (negado) return negado;
   const parse = configSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };

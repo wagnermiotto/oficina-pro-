@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireOficina } from "@/shared/lib/session";
+import { guardPermissao, requireOficina } from "@/shared/lib/session";
 import { registrarAuditoria } from "@/shared/lib/audit";
 import { clienteSchema, type ClienteFormValues } from "../schemas/cliente-schemas";
 import * as service from "../services/clientes-service";
@@ -16,6 +16,8 @@ export async function criarClienteAction(
   valores: ClienteFormValues
 ): Promise<ResultadoCliente> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "clientes", "CRIAR");
+  if (negado) return negado;
   const parse = clienteSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };
@@ -36,6 +38,8 @@ export async function atualizarClienteAction(
   valores: ClienteFormValues
 ): Promise<ResultadoCliente> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "clientes", "EDITAR");
+  if (negado) return negado;
   const parse = clienteSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };
@@ -57,6 +61,8 @@ export async function atualizarClienteAction(
 
 export async function excluirClienteAction(id: string): Promise<ResultadoCliente> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "clientes", "EXCLUIR");
+  if (negado) return negado;
   try {
     await service.excluirCliente(ctx.db, id);
   } catch (erro) {

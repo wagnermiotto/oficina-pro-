@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { requireOficina } from "@/shared/lib/session";
+import { requireOficina, requirePermissaoPage } from "@/shared/lib/session";
 import {
   listarVeiculos,
   listarClientesParaSelecao,
@@ -18,7 +18,9 @@ interface Props {
 }
 
 async function ListaVeiculos({ searchParams }: Props) {
-  const { db } = await requireOficina();
+  const ctx = await requireOficina();
+  await requirePermissaoPage(ctx, "veiculos");
+  const { db } = ctx;
   const params = await searchParams;
   const pagina = Math.max(1, Number(params.pagina) || 1);
   const [{ itens, total, totalPaginas }, clientes] = await Promise.all([

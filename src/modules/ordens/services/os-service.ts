@@ -17,10 +17,13 @@ export async function listarOS(
     busca,
     status,
     pagina,
-  }: { busca?: string; status?: StatusOS; pagina: number }
+    mecanicoId,
+  }: { busca?: string; status?: StatusOS; pagina: number; mecanicoId?: string }
 ) {
   const where: Prisma.OrdemServicoWhereInput = {
     ...(status ? { status } : {}),
+    // Escopo "minhas OS" do RBAC (perfil Mecânico padrão).
+    ...(mecanicoId ? { mecanicoId } : {}),
     ...(busca
       ? {
           OR: [

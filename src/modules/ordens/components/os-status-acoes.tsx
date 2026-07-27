@@ -42,9 +42,18 @@ import { Input } from "@/components/ui/input";
 interface OSStatusAcoesProps {
   osId: string;
   status: StatusOS;
+  /** ordens.ENVIAR_APROVACAO — portal, aprovação, NPS e PDF (contêm valores). */
+  podeEnviar?: boolean;
+  /** ordens.MUDAR_STATUS — dropdown de transição de status. */
+  podeMudarStatus?: boolean;
 }
 
-export function OSStatusAcoes({ osId, status }: OSStatusAcoesProps) {
+export function OSStatusAcoes({
+  osId,
+  status,
+  podeEnviar = true,
+  podeMudarStatus = true,
+}: OSStatusAcoesProps) {
   const router = useRouter();
   const [processando, setProcessando] = useState(false);
   const [linkAprovacao, setLinkAprovacao] = useState<string | null>(null);
@@ -120,18 +129,23 @@ export function OSStatusAcoes({ osId, status }: OSStatusAcoesProps) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Button variant="outline" asChild>
-        <a href={`/ordens/${osId}/pdf`} target="_blank" rel="noreferrer">
-          <FileText className="size-4" /> PDF
-        </a>
-      </Button>
+      {podeEnviar ? (
+        <Button variant="outline" asChild>
+          <a href={`/ordens/${osId}/pdf`} target="_blank" rel="noreferrer">
+            <FileText className="size-4" /> PDF
+          </a>
+        </Button>
+      ) : null}
 
-      <Button variant="outline" onClick={gerarPortal} disabled={processando}>
-        {processando ? <Loader2 className="size-4 animate-spin" /> : <Link2 className="size-4" />}
-        Portal do cliente
-      </Button>
+      {podeEnviar ? (
+        <Button variant="outline" onClick={gerarPortal} disabled={processando}>
+          {processando ? <Loader2 className="size-4 animate-spin" /> : <Link2 className="size-4" />}
+          Portal do cliente
+        </Button>
+      ) : null}
 
-      {(status === "RECEBIDO" ||
+      {podeEnviar &&
+        (status === "RECEBIDO" ||
         status === "DIAGNOSTICO" ||
         status === "AGUARDANDO_APROVACAO") && (
         <Button
@@ -149,7 +163,7 @@ export function OSStatusAcoes({ osId, status }: OSStatusAcoesProps) {
         </Button>
       )}
 
-      {podeAvaliar && (
+      {podeEnviar && podeAvaliar && (
         <Button
           variant="outline"
           onClick={gerarNps}
@@ -165,7 +179,7 @@ export function OSStatusAcoes({ osId, status }: OSStatusAcoesProps) {
         </Button>
       )}
 
-      {transicoes.length > 0 && (
+      {podeMudarStatus && transicoes.length > 0 && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button disabled={processando}>

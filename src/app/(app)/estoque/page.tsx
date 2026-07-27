@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { format } from "date-fns";
 import Link from "next/link";
 import { AlertTriangle, Boxes, CircleDollarSign } from "lucide-react";
-import { requireOficina } from "@/shared/lib/session";
+import { requireOficina, requirePermissaoPage } from "@/shared/lib/session";
 import {
   listarPecas,
   listarMovimentacoes,
@@ -51,7 +51,9 @@ interface Props {
 }
 
 async function ConteudoEstoque({ searchParams }: Props) {
-  const { db } = await requireOficina();
+  const ctx = await requireOficina();
+  await requirePermissaoPage(ctx, "estoque");
+  const { db } = ctx;
   const params = await searchParams;
   const pagina = Math.max(1, Number(params.pagina) || 1);
 

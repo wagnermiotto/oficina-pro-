@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { format } from "date-fns";
-import { getSessao } from "@/shared/lib/session";
+import { getSessao, temPermissaoDireta } from "@/shared/lib/session";
 import { tenantDb } from "@/shared/lib/tenant-db";
 import { gerarCSV, numeroCSV } from "@/shared/utils/csv";
 import { formatarPlaca } from "@/shared/utils/placa";
@@ -23,6 +23,15 @@ export async function GET(request: NextRequest) {
   const oficinaId = sessao?.session.activeOrganizationId;
   if (!oficinaId) {
     return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
+  }
+  const autorizado = await temPermissaoDireta(
+    oficinaId,
+    sessao.user.id,
+    "relatorios",
+    "EXPORTAR"
+  );
+  if (!autorizado) {
+    return NextResponse.json({ erro: "Sem permissão." }, { status: 403 });
   }
   const db = tenantDb(oficinaId);
 

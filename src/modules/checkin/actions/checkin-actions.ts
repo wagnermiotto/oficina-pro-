@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireOficina } from "@/shared/lib/session";
+import { guardPermissao, requireOficina } from "@/shared/lib/session";
 import { registrarAuditoria } from "@/shared/lib/audit";
 import {
   ArquivoInvalidoError,
@@ -26,6 +26,8 @@ export async function criarCheckInAction(
   formData: FormData
 ): Promise<ResultadoCheckIn> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "ordens", "CRIAR");
+  if (negado) return negado;
 
   const veiculo = await ctx.db.veiculo.findUnique({
     where: { id: veiculoId },

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { FormaPagamento } from "@prisma/client";
-import { requireOficina } from "@/shared/lib/session";
+import { guardPermissao, requireOficina } from "@/shared/lib/session";
 import { registrarAuditoria } from "@/shared/lib/audit";
 import {
   lancamentoSchema,
@@ -25,6 +25,8 @@ export async function criarLancamentoAction(
   valores: LancamentoFormValues
 ): Promise<ResultadoFinanceiro> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "financeiro", "CRIAR");
+  if (negado) return negado;
   const parse = lancamentoSchema.safeParse(valores);
   if (!parse.success) {
     return { ok: false, erro: parse.error.issues[0]?.message ?? "Dados inválidos." };
@@ -54,6 +56,8 @@ export async function marcarPagoAction(
   formaPagamento: FormaPagamento
 ): Promise<ResultadoFinanceiro> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "financeiro", "EDITAR");
+  if (negado) return negado;
   const parse = pagamentoSchema.safeParse({ formaPagamento });
   if (!parse.success) {
     return { ok: false, erro: "Forma de pagamento inválida." };
@@ -78,6 +82,8 @@ export async function cancelarLancamentoAction(
   id: string
 ): Promise<ResultadoFinanceiro> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "financeiro", "EXCLUIR");
+  if (negado) return negado;
   try {
     await service.cancelarLancamento(ctx.db, id);
     await registrarAuditoria(ctx, {
@@ -94,6 +100,8 @@ export async function cancelarLancamentoAction(
 
 export async function pagarComissaoAction(id: string): Promise<ResultadoFinanceiro> {
   const ctx = await requireOficina();
+  const negado = await guardPermissao(ctx, "financeiro", "EDITAR");
+  if (negado) return negado;
   try {
     await service.pagarComissao(ctx.db, ctx.oficinaId, id);
     await registrarAuditoria(ctx, {

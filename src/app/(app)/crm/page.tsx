@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { format, isBefore, startOfDay } from "date-fns";
-import { requireOficina } from "@/shared/lib/session";
+import { requireOficina, requirePermissaoPage } from "@/shared/lib/session";
 import {
   lembretesAutomaticos,
   listarGarantias,
@@ -19,7 +19,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 export const metadata: Metadata = { title: "CRM" };
 
 async function ConteudoCRM() {
-  const { db } = await requireOficina();
+  const ctx = await requireOficina();
+  await requirePermissaoPage(ctx, "crm");
+  const { db } = ctx;
   const hoje = startOfDay(new Date());
 
   const [

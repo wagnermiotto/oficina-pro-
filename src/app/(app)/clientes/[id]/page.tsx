@@ -10,7 +10,7 @@ import {
   MessageCircle,
   Phone,
 } from "lucide-react";
-import { requireOficina } from "@/shared/lib/session";
+import { requireOficina, requirePermissaoPage } from "@/shared/lib/session";
 import { obterCliente } from "@/modules/clientes/services/clientes-service";
 import { listarClientesParaSelecao } from "@/modules/veiculos/services/veiculos-service";
 import { ClienteDialog } from "@/modules/clientes/components/cliente-dialog";
@@ -38,7 +38,9 @@ export default async function ClienteDetalhePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { db } = await requireOficina();
+  const ctx = await requireOficina();
+  await requirePermissaoPage(ctx, "clientes");
+  const { db } = ctx;
   const { id } = await params;
   const [cliente, clientesSelecao] = await Promise.all([
     obterCliente(db, id),
