@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { Building2, LayoutDashboard, ShieldCheck, Layers } from "lucide-react";
+import {
+  Building2,
+  LayoutDashboard,
+  ShieldCheck,
+  Layers,
+  UserCog,
+} from "lucide-react";
 import { requireSuperAdmin } from "@/shared/lib/session";
 import { ThemeToggle } from "@/shared/components/layout/theme-toggle";
 
@@ -7,6 +13,7 @@ const NAV = [
   { href: "/matriz", label: "Visão geral", icone: LayoutDashboard },
   { href: "/matriz/oficinas", label: "Oficinas", icone: Building2 },
   { href: "/matriz/planos", label: "Planos", icone: Layers },
+  { href: "/matriz/administradores", label: "Administradores", icone: UserCog },
 ];
 
 export default async function MatrizLayout({

@@ -9,14 +9,21 @@ export type ChaveRecurso =
   | "ia_enabled"
   | "bi_enabled";
 
-/** Recursos do plano ativo de uma oficina (cacheado por request). */
+/**
+ * Recursos efetivos de uma oficina (cacheado por request).
+ * Precedência: RecursoOficina (flag individual da Matriz) > RecursoPlano.
+ */
 const recursosCache = cache(async (oficinaId: string) => {
-  const assinatura = await prisma.assinatura.findUnique({
-    where: { oficinaId },
-    select: { plano: { select: { recursos: true } } },
-  });
+  const [assinatura, overrides] = await Promise.all([
+    prisma.assinatura.findUnique({
+      where: { oficinaId },
+      select: { plano: { select: { recursos: true } } },
+    }),
+    prisma.recursoOficina.findMany({ where: { oficinaId } }),
+  ]);
   const mapa = new Map<string, string>();
   for (const r of assinatura?.plano.recursos ?? []) mapa.set(r.chave, r.valor);
+  for (const r of overrides) mapa.set(r.chave, r.valor);
   return mapa;
 });
 

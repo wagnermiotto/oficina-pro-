@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Building2, CircleDollarSign, Lock, TrendingUp } from "lucide-react";
+import {
+  Activity,
+  Building2,
+  CircleDollarSign,
+  FlaskConical,
+  Lock,
+  TrendingUp,
+} from "lucide-react";
 import { requireSuperAdmin } from "@/shared/lib/session";
 import { resumoMatriz } from "@/modules/plataforma/services/matriz-service";
 import { PlanoChart } from "@/modules/plataforma/components/plano-chart";
@@ -42,6 +49,10 @@ export default async function MatrizDashboardPage() {
           descricao={r.suspensas > 0 ? `${r.suspensas} suspensa(s)` : undefined} />
         <KpiCard titulo="Novas oficinas (90d)" valor={String(r.novas90)}
           icone={TrendingUp} descricao={`${r.novas30} nos últimos 30 dias`} />
+        <KpiCard titulo="Em teste (pendentes)" valor={String(r.pendentes)}
+          icone={FlaskConical} />
+        <KpiCard titulo="Acessos (7 dias)" valor={String(r.acessos7d)}
+          icone={Activity} descricao="Logins auditados na plataforma" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

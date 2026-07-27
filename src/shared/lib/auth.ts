@@ -47,6 +47,31 @@ export const auth = betterAuth({
             },
           };
         },
+        // Auditoria de LOGIN (exigência da Matriz). A sessão já carrega
+        // IP/user-agent; nunca lança para não quebrar o login.
+        after: async (session) => {
+          try {
+            // activeOrganizationId é campo custom do plugin — o tipo do hook
+            // não o conhece.
+            const oficinaId =
+              typeof session.activeOrganizationId === "string"
+                ? session.activeOrganizationId
+                : null;
+            await prisma.auditLog.create({
+              data: {
+                oficinaId,
+                usuarioId: session.userId,
+                acao: "LOGIN",
+                entidade: "sessao",
+                entidadeId: session.id,
+                ip: session.ipAddress ?? null,
+                userAgent: session.userAgent ?? null,
+              },
+            });
+          } catch (erro) {
+            console.error("Falha ao auditar login:", erro);
+          }
+        },
       },
     },
   },

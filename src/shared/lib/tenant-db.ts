@@ -54,6 +54,7 @@ const TENANT_MODELS = new Set([
   "TemplateServicoItem",
   "PerfilAcesso",
   "PermissaoPerfil",
+  "RecursoOficina",
 ]);
 
 const SOFT_DELETE_MODELS = new Set([

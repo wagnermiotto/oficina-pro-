@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { format } from "date-fns";
+import { Plus } from "lucide-react";
 import type { StatusAssinatura } from "@prisma/client";
 import { requireSuperAdmin } from "@/shared/lib/session";
 import { listarOficinas, statusEfetivo } from "@/modules/plataforma/services/matriz-service";
@@ -10,6 +12,7 @@ import { STATUS_ASSINATURA_BADGE, STATUS_ASSINATURA_LABEL } from "@/modules/plat
 import { BuscaInput } from "@/shared/components/busca-input";
 import { Paginacao } from "@/shared/components/paginacao";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -41,11 +44,18 @@ async function Conteudo({ searchParams }: Props) {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight">Oficinas</h1>
-        <p className="text-sm text-muted-foreground">
-          {oficinas.total} oficina(s) na plataforma. Gerencie plano, vencimento e cobrança.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">Oficinas</h1>
+          <p className="text-sm text-muted-foreground">
+            {oficinas.total} oficina(s) na plataforma. Gerencie plano, vencimento e cobrança.
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/matriz/oficinas/nova">
+            <Plus className="size-4" /> Nova oficina
+          </Link>
+        </Button>
       </div>
 
       <Suspense>
@@ -77,7 +87,14 @@ async function Conteudo({ searchParams }: Props) {
                 const efetivo = a ? statusEfetivo(a) : null;
                 return (
                   <TableRow key={of.id}>
-                    <TableCell className="font-medium">{of.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`/matriz/oficinas/${of.id}`}
+                        className="hover:text-destaque hover:underline"
+                      >
+                        {of.name}
+                      </Link>
+                    </TableCell>
                     <TableCell>{a?.plano.nome ?? <span className="text-muted-foreground">—</span>}</TableCell>
                     <TableCell>
                       {efetivo ? (

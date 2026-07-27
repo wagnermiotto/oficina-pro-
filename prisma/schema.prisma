@@ -140,6 +140,7 @@ model Organization {
   templateServicoItens  TemplateServicoItem[]
   perfisAcesso          PerfilAcesso[]
   permissoesPerfil      PermissaoPerfil[]
+  recursosOficina       RecursoOficina[]
 
   @@map("organization")
 }
@@ -184,6 +185,8 @@ model OficinaConfig {
   oficinaId             String   @unique
   cnpj                  String?
   razaoSocial           String?
+  responsavelNome       String?
+  responsavelCpf        String?
   telefone              String?
   whatsapp              String?
   email                 String?
@@ -285,6 +288,22 @@ model PlataformaAdmin {
   createdAt DateTime @default(now())
 
   @@map("plataforma_admin")
+}
+
+/// Feature flag POR OFICINA — override do recurso do plano, controlado só
+/// pela Matriz. Precedência: RecursoOficina > RecursoPlano > liberado.
+model RecursoOficina {
+  id        String   @id @default(uuid()) @db.Uuid
+  oficinaId String
+  chave     String
+  valor     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  oficina Organization @relation(fields: [oficinaId], references: [id], onDelete: Cascade)
+
+  @@unique([oficinaId, chave])
+  @@map("recurso_oficina")
 }
 
 // =============================================================================
